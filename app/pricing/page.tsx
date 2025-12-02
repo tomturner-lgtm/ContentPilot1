@@ -25,48 +25,30 @@ export default function PricingPage() {
 
   const [loading, setLoading] = useState<string | null>(null)
 
-  const handleCheckout = async (planType: 'pro' | 'max') => {
+  const handleCheckout = async (priceId: string) => {
     try {
-      setLoading(planType)
+      setLoading(priceId)
 
-      // Pour cette démo, on utilise seulement le plan Pro avec Stripe
-      if (planType === 'pro') {
-        const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || ''
-        
-        if (!priceId) {
-          alert('Stripe Price ID non configuré. Veuillez configurer NEXT_PUBLIC_STRIPE_PRICE_ID dans .env.local')
-          setLoading(null)
-          return
-        }
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priceId }),
+      })
 
-        const response = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            priceId,
-            planType: 'pro',
-          }),
-        })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Erreur lors de la création de la session')
+      }
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Erreur lors de la création de la session')
-        }
+      const data = await response.json()
 
-        const { url } = await response.json()
-
-        if (url) {
-          // Rediriger vers Stripe Checkout
-          window.location.href = url
-        } else {
-          throw new Error('URL de checkout non reçue')
-        }
+      if (data.url) {
+        // Rediriger vers Stripe Checkout
+        window.location.href = data.url
       } else {
-        // Plan Max - pas encore implémenté avec Stripe
-        alert('Le plan Max sera bientôt disponible !')
-        setLoading(null)
+        throw new Error('URL de checkout non reçue')
       }
     } catch (error) {
       console.error('Erreur checkout:', error)
@@ -75,18 +57,57 @@ export default function PricingPage() {
     }
   }
 
-  const handleSelectPlan = (planType: 'free' | 'pro' | 'max') => {
-    if (planType === 'free') {
-      plan.updatePlan('free', 'monthly')
-      alert('Plan gratuit activé !')
-    } else {
-      // Rediriger vers Stripe Checkout pour les plans payants
-      handleCheckout(planType)
+  const handleTestPurchase = async () => {
+    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST
+    if (!priceId) {
+      alert('Stripe Price ID pour le test non configuré')
+      return
+    }
+    await handleCheckout(priceId)
+  }
+
+  const handleProCheckout = async () => {
+    const priceId =
+      billingPeriod === 'monthly'
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
+    if (!priceId) {
+      alert('Stripe Price ID pour le plan Pro non configuré')
+      return
+    }
+    await handleCheckout(priceId)
+  }
+
+  const handleUnlimitedCheckout = async () => {
+    const priceId =
+      billingPeriod === 'monthly'
+        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_MONTHLY
+        : process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_YEARLY
+    if (!priceId) {
+      alert('Stripe Price ID pour le plan Illimité non configuré')
+      return
+    }
+    await handleCheckout(priceId)
+  }
+
+  const handleSelectPlan = (planType: 'test' | 'pro' | 'unlimited') => {
+    if (planType === 'test') {
+      handleTestPurchase()
+    } else if (planType === 'pro') {
+      handleProCheckout()
+    } else if (planType === 'unlimited') {
+      handleUnlimitedCheckout()
     }
   }
 
-  const isCurrentPlan = (planType: 'free' | 'pro' | 'max') => {
-    return plan.currentPlanType === planType
+  const isCurrentPlan = (planType: 'test' | 'pro' | 'unlimited') => {
+    // Map old plan types to new ones for compatibility
+    const planMap: Record<string, string> = {
+      free: 'test',
+      max: 'unlimited',
+    }
+    const mappedPlan = planMap[plan.currentPlanType] || plan.currentPlanType
+    return mappedPlan === planType
   }
 
   return (
@@ -146,23 +167,23 @@ export default function PricingPage() {
         </div>
 
         <div className="grid gap-8 sm:grid-cols-1 lg:grid-cols-3 max-w-6xl mx-auto">
-          {/* Plan Gratuit */}
+          {/* Plan Test à 5€ */}
           <div
             className={`rounded-xl bg-white p-8 shadow-sm border-2 ${
-              isCurrentPlan('free')
+              isCurrentPlan('test')
                 ? 'border-primary-500'
                 : 'border-gray-200'
             }`}
           >
             <div className="mb-6">
               <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Plan Gratuit
+                Test
               </h3>
               <div className="flex items-baseline">
-                <span className="text-4xl font-bold text-gray-900">0€</span>
-                <span className="text-gray-600 ml-2">/mois</span>
+                <span className="text-4xl font-bold text-gray-900">5€</span>
+                <span className="text-gray-600 ml-2">une fois</span>
               </div>
-              <p className="text-sm text-gray-500 mt-2">Toujours gratuit</p>
+              <p className="text-sm text-gray-500 mt-2">Pour tester le service</p>
             </div>
             <ul className="space-y-4 mb-8">
               <li className="flex items-start">
@@ -180,7 +201,7 @@ export default function PricingPage() {
                   />
                 </svg>
                 <span className="text-gray-700">
-                  <strong>{PLAN_LIMITS.free}</strong> article par mois
+                  <strong>1</strong> article
                 </span>
               </li>
               <li className="flex items-start">
@@ -217,15 +238,17 @@ export default function PricingPage() {
               </li>
             </ul>
             <button
-              onClick={() => handleSelectPlan('free')}
-              disabled={isCurrentPlan('free')}
+              onClick={() => handleSelectPlan('test')}
+              disabled={loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST}
               className={`w-full rounded-lg px-6 py-3 text-base font-semibold transition-colors ${
-                isCurrentPlan('free')
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST
+                  ? 'bg-gray-400 text-white cursor-wait'
+                  : 'bg-primary-600 text-white hover:bg-primary-700'
               }`}
             >
-              {isCurrentPlan('free') ? 'Plan actuel' : 'Sélectionner'}
+              {loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST
+                ? 'Redirection...'
+                : 'Tester pour 5€'}
             </button>
           </div>
 
@@ -333,16 +356,22 @@ export default function PricingPage() {
             </ul>
             <button
               onClick={() => handleSelectPlan('pro')}
-              disabled={isCurrentPlan('pro') || loading === 'pro'}
+              disabled={
+                isCurrentPlan('pro') ||
+                loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
+                loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
+              }
               className={`w-full rounded-lg px-6 py-3 text-base font-semibold transition-colors ${
                 isCurrentPlan('pro')
                   ? 'bg-primary-200 text-primary-700 cursor-not-allowed'
-                  : loading === 'pro'
+                  : loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
+                    loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
                   ? 'bg-primary-400 text-white cursor-wait'
                   : 'bg-primary-600 text-white hover:bg-primary-700'
               }`}
             >
-              {loading === 'pro' ? (
+              {loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
+              loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg
                     className="animate-spin h-5 w-5"
@@ -368,7 +397,7 @@ export default function PricingPage() {
               ) : isCurrentPlan('pro') ? (
                 'Plan actuel'
               ) : (
-                "Commencer l'essai à $1"
+                "S'abonner"
               )}
             </button>
             <p className="mt-4 text-xs text-center text-gray-500">
@@ -376,10 +405,10 @@ export default function PricingPage() {
             </p>
           </div>
 
-          {/* Plan Max */}
+          {/* Plan Illimité */}
           <div
             className={`rounded-xl bg-white p-8 shadow-sm border-2 ${
-              isCurrentPlan('max')
+              isCurrentPlan('unlimited')
                 ? 'border-primary-500'
                 : 'border-gray-200'
             }`}
@@ -490,15 +519,27 @@ export default function PricingPage() {
               </li>
             </ul>
             <button
-              onClick={() => handleSelectPlan('max')}
-              disabled={isCurrentPlan('max')}
+              onClick={() => handleSelectPlan('unlimited')}
+              disabled={
+                isCurrentPlan('unlimited') ||
+                loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_MONTHLY ||
+                loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_YEARLY
+              }
               className={`w-full rounded-lg px-6 py-3 text-base font-semibold transition-colors ${
-                isCurrentPlan('max')
+                isCurrentPlan('unlimited')
                   ? 'bg-primary-200 text-primary-700 cursor-not-allowed'
+                  : loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_MONTHLY ||
+                    loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_YEARLY
+                  ? 'bg-gray-600 text-white cursor-wait'
                   : 'bg-gray-900 text-white hover:bg-gray-800'
               }`}
             >
-              {isCurrentPlan('max') ? 'Plan actuel' : 'Commencer maintenant'}
+              {loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_MONTHLY ||
+              loading === process.env.NEXT_PUBLIC_STRIPE_PRICE_UNLIMITED_YEARLY
+                ? 'Redirection...'
+                : isCurrentPlan('unlimited')
+                ? 'Plan actuel'
+                : 'Commencer maintenant'}
             </button>
             <p className="mt-4 text-xs text-center text-gray-500">
               Paiement sécurisé • Annulation à tout moment

@@ -16,7 +16,9 @@
     "react-markdown": "^9.0.1",
     "marked": "^11.1.1",
     "stripe": "^14.21.0",
-    "@stripe/stripe-js": "^2.4.0"
+    "@stripe/stripe-js": "^2.4.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "@supabase/auth-helpers-nextjs": "^0.8.7"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

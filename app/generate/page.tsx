@@ -47,9 +47,22 @@ export default function GeneratePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Vérifier le quota avant de générer
-    if (!quota.canGenerate) {
-      setError('Limite de quota atteinte')
+    // Check quota first
+    try {
+      const quotaRes = await fetch('/api/user/check-quota')
+      if (!quotaRes.ok) {
+        throw new Error('Erreur lors de la vérification du quota')
+      }
+      const quotaData = await quotaRes.json()
+
+      if (!quotaData.canGenerate) {
+        alert('Limite atteinte! Passez au plan Pro ou achetez un test à 5€.')
+        router.push('/pricing')
+        return
+      }
+    } catch (err) {
+      console.error('Error checking quota:', err)
+      setError('Erreur lors de la vérification du quota')
       return
     }
 
