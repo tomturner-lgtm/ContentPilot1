@@ -30,10 +30,9 @@ function initCustomCursor() {
     cursorDot.style.top = `${posY}px`;
     
     // Outline follows with slight delay (handled by CSS transition or requestAnimationFrame for smoother feel)
-    cursorOutline.animate({
-      left: `${posX}px`,
-      top: `${posY}px`
-    }, { duration: 500, fill: "forwards" });
+    cursorOutline.animate([
+      { left: `${posX}px`, top: `${posY}px` }
+    ], { duration: 500, fill: "forwards" });
   });
   
   // Hover effects

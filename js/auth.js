@@ -11,6 +11,8 @@ let supabase;
 function initSupabase() {
     if (typeof window.supabase !== 'undefined') {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Export to global scope so api.js can access it
+        window.supabaseClient = supabase;
         console.log('Supabase initialized');
         checkUserSession();
     } else {
@@ -33,12 +35,12 @@ function updateUIForSession(session) {
 
     if (session) {
         document.body.classList.add('logged-in');
-        if (authButtons) authButtons.forEach(btn => btn.style.display = 'none');
-        if (userProfile) userProfile.style.display = 'flex';
+        if (authButtons) authButtons.forEach(btn => btn.classList.add('hidden'));
+        if (userProfile) userProfile.classList.remove('hidden');
     } else {
         document.body.classList.remove('logged-in');
-        if (authButtons) authButtons.forEach(btn => btn.style.display = 'block');
-        if (userProfile) userProfile.style.display = 'none';
+        if (authButtons) authButtons.forEach(btn => btn.classList.remove('hidden'));
+        if (userProfile) userProfile.classList.add('hidden');
     }
 }
 
