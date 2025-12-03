@@ -13,6 +13,7 @@ import { Confetti } from '@/components/Confetti'
 import { useToastContext } from '@/components/ToastProvider'
 import { TemplateType, getTemplate } from '@/lib/templates'
 import { LanguageCode, getLanguage } from '@/lib/languages'
+import { Sparkles, Copy, Save, RotateCcw, Loader2, ArrowLeft } from 'lucide-react'
 
 export default function GeneratePage() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function GeneratePage() {
   const [error, setError] = useState('')
   const [progress, setProgress] = useState(0)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [charCount, setCharCount] = useState(0)
 
   // Charger la dernière langue utilisée au montage
   useEffect(() => {
@@ -43,6 +45,11 @@ export default function GeneratePage() {
       setLength(templateData.recommendedLength.toString())
     }
   }, [template])
+
+  // Calculer le nombre de caractères du prompt
+  useEffect(() => {
+    setCharCount(title.length + keyword.length)
+  }, [title, keyword])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -134,23 +141,49 @@ export default function GeneratePage() {
     }
   }
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(article)
+      toast.showToast('Contenu copié dans le presse-papiers', 'success')
+    } catch (err) {
+      toast.showToast('Erreur lors de la copie', 'error')
+    }
+  }
+
+  const handleSave = () => {
+    if (article && title) {
+      articles.saveArticle({
+        title,
+        content: article,
+        keyword,
+        length: parseInt(length),
+      })
+      toast.showToast('Article sauvegardé avec succès', 'success')
+    }
+  }
+
+  const handleRegenerate = () => {
+    handleSubmit(new Event('submit') as any)
+  }
+
   // Afficher le message de limite atteinte si le quota est épuisé
   if (!quota.isLoading && !quota.canGenerate) {
     return (
-      <main className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
           <div className="mb-8">
             <Link
               href="/"
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              className="text-slate-600 hover:text-indigo-600 font-medium transition-colors inline-flex items-center gap-1"
             >
-              ← Retour à l'accueil
+              <ArrowLeft className="w-4 h-4" />
+              Retour à l'accueil
             </Link>
           </div>
 
           {/* Message de limite atteinte */}
-          <div className="rounded-xl bg-white p-8 shadow-sm text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
               <svg
                 className="h-8 w-8 text-red-600"
                 fill="none"
@@ -165,20 +198,17 @@ export default function GeneratePage() {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
               Limite atteinte
             </h2>
-            <p className="text-gray-600 mb-6">
-              Vous avez utilisé vos {quota.limit} article{quota.limit > 1 ? 's' : ''} {quota.planType === 'free' ? 'gratuit' : quota.planType === 'pro' ? 'du plan Pro' : 'du plan Max'} ce mois-ci.
-              {quota.planType === 'free' && (
-                <> Le quota sera réinitialisé automatiquement le mois prochain.</>
-              )}
+            <p className="text-slate-600 mb-6">
+              Vous avez utilisé vos {quota.limit} article{quota.limit > 1 ? 's' : ''} {quota.planType === 'test' ? 'du plan Test' : quota.planType === 'pro' ? 'du plan Pro' : 'du plan Max'} ce mois-ci.
             </p>
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 transition-colors"
+              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
             >
-              {quota.planType === 'free' ? 'Passer au plan Pro ou Max' : 'Voir les plans'}
+              {quota.planType === 'test' ? 'Passer au plan Pro ou Max' : 'Voir les plans'}
             </Link>
           </div>
         </div>
@@ -187,171 +217,242 @@ export default function GeneratePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <main className="min-h-screen bg-white">
       {/* Confettis */}
       <Confetti show={showConfetti} />
 
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/"
-            className="text-primary-600 hover:text-primary-700 font-medium"
+            className="text-slate-600 hover:text-indigo-600 font-medium transition-colors inline-flex items-center gap-1 mb-4"
           >
-            ← Retour à l'accueil
+            <ArrowLeft className="w-4 h-4" />
+            Retour à l'accueil
           </Link>
-          <h1 className="mt-4 text-4xl font-bold text-gray-900 sm:text-5xl">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 mb-2">
             Générateur d'articles
           </h1>
-          <p className="mt-2 text-lg text-gray-600">
-            Remplissez le formulaire pour générer votre article
+          <p className="text-slate-500">
+            Créez du contenu optimisé SEO en quelques secondes
           </p>
           {quota.remaining > 0 && (
-            <p className="mt-1 text-sm text-gray-500">
-              Il vous reste <span className="font-medium text-primary-600">{quota.remaining}</span> article{quota.remaining > 1 ? 's' : ''} gratuit{quota.remaining > 1 ? 's' : ''} ce mois-ci
+            <p className="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Il vous reste <span className="text-indigo-600">{quota.remaining}</span> article{quota.remaining > 1 ? 's' : ''} ce mois-ci
             </p>
           )}
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="mb-8">
-          <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm sm:p-8 animate-fade-in transition-colors">
-            <div className="space-y-6">
-              {/* Template Selector */}
-              <TemplateSelector
-                selectedTemplate={template}
-                onSelectTemplate={setTemplate}
-              />
-
-              {/* Language Selector */}
-              <LanguageSelector
-                selectedLanguage={language}
-                onSelectLanguage={setLanguage}
-              />
-
-              {/* Title Input */}
-              <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Titre de l'article
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
-                  placeholder="Ex: Comment démarrer une entreprise en ligne"
-                />
+        {/* Layout à 2 colonnes sur desktop */}
+        <div className="grid gap-6 lg:grid-cols-[40%_60%]">
+          {/* Panneau de gauche - Formulaire */}
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 lg:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Titre de section */}
+              <div className="mb-6">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
+                  Configuration
+                </h2>
               </div>
 
-              {/* Keyword Input */}
-              <div>
-                <label
-                  htmlFor="keyword"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Mot-clé principal
-                </label>
-                <input
-                  type="text"
-                  id="keyword"
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:border-primary-500 dark:focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
-                  placeholder="Ex: entrepreneuriat en ligne"
-                />
+              {/* Grille pour les selecteurs */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Template Selector - Adapté pour la grille */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Template
+                  </label>
+                  <select
+                    value={template}
+                    onChange={(e) => setTemplate(e.target.value as TemplateType)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    <option value="blog-classic">Classique</option>
+                    <option value="blog-list">Liste</option>
+                    <option value="blog-howto">Guide</option>
+                    <option value="blog-review">Avis</option>
+                    <option value="blog-news">Actualité</option>
+                  </select>
+                </div>
+
+                {/* Language Selector - Adapté pour la grille */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Langue
+                  </label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    <option value="fr">Français 🇫🇷</option>
+                    <option value="en">English 🇬🇧</option>
+                    <option value="es">Español 🇪🇸</option>
+                    <option value="de">Deutsch 🇩🇪</option>
+                    <option value="it">Italiano 🇮🇹</option>
+                  </select>
+                </div>
               </div>
 
-              {/* Length Selector */}
+              {/* Longueur */}
               <div>
-                <label
-                  htmlFor="length"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Longueur de l'article
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Longueur
                 </label>
                 <select
-                  id="length"
                   value={length}
                   onChange={(e) => setLength(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-gray-900 dark:text-gray-100 focus:border-primary-500 dark:focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 >
                   <option value="500">500 mots</option>
                   <option value="1000">1000 mots</option>
                   <option value="1500">1500 mots</option>
+                  <option value="2000">2000 mots</option>
                 </select>
+              </div>
+
+              {/* Titre */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Titre de l'article
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Ex: Comment démarrer une entreprise en ligne"
+                />
+              </div>
+
+              {/* Mot-clé */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Mot-clé principal
+                </label>
+                <input
+                  type="text"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Ex: entrepreneuriat en ligne"
+                />
               </div>
 
               {/* Progress Bar */}
               {loading && (
                 <div className="w-full">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-xs text-slate-500">
                       Génération en cours...
                     </span>
-                    <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
+                    <span className="text-xs font-medium text-indigo-600">
                       {Math.round(progress)}%
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary-600 transition-all duration-300 ease-out rounded-full"
+                      className="h-full bg-indigo-600 transition-all duration-300 ease-out rounded-full"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
                 </div>
               )}
 
-              {/* Submit Button */}
+              {/* Error Message */}
+              {error && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
+              {/* Bouton Générer */}
               <button
                 type="submit"
                 disabled={loading || !quota.canGenerate}
-                className="w-full rounded-lg bg-primary-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-slate-800 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
               >
-                {loading ? 'Génération en cours...' : "Générer l'article"}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Génération en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Générer l'article
+                  </>
+                )}
               </button>
-            </div>
+            </form>
           </div>
-        </form>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-8 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 animate-fade-in">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-          </div>
-        )}
+          {/* Panneau de droite - Résultat */}
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 lg:p-8 min-h-[600px] relative">
+            {article ? (
+              <>
+                {/* Barre d'outils flottante */}
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl p-2 shadow-sm z-10">
+                  <button
+                    onClick={handleCopy}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Copier"
+                  >
+                    <Copy className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Sauvegarder"
+                  >
+                    <Save className="w-4 h-4 text-slate-600" />
+                  </button>
+                  <button
+                    onClick={handleRegenerate}
+                    disabled={loading}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Régénérer"
+                  >
+                    <RotateCcw className="w-4 h-4 text-slate-600" />
+                  </button>
+                </div>
 
-        {/* Article Display */}
-        {article && (
-          <div className="rounded-xl bg-white p-6 shadow-sm sm:p-8">
-            <div className="mb-4 border-b border-gray-200 pb-4">
-              <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-              <p className="mt-2 text-sm text-gray-600">
-                Mot-clé: <span className="font-medium">{keyword}</span> |{' '}
-                Longueur: <span className="font-medium">{length} mots</span> |{' '}
-                Langue: <span className="font-medium">{getLanguage(language).nativeName} {getLanguage(language).flag}</span>
-              </p>
-            </div>
-            <div className="prose prose-lg max-w-none">
-              <ReactMarkdown className="text-gray-700 leading-7">
-                {article}
-              </ReactMarkdown>
-            </div>
-            <div className="mt-6 pt-6 border-t border-gray-200 flex gap-3">
-              <Link
-                href="/articles"
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
-              >
-                Voir mes articles
-              </Link>
-            </div>
+                {/* Contenu de l'article */}
+                <div className="prose prose-lg max-w-none">
+                  <div className="mb-6 pb-6 border-b border-gray-200">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">{title}</h2>
+                    <p className="text-sm text-slate-500">
+                      Mot-clé: <span className="font-medium text-slate-700">{keyword}</span> •{' '}
+                      Longueur: <span className="font-medium text-slate-700">{length} mots</span> •{' '}
+                      Langue: <span className="font-medium text-slate-700">{getLanguage(language).nativeName} {getLanguage(language).flag}</span>
+                    </p>
+                  </div>
+                  <div className="text-slate-700 leading-7">
+                    <ReactMarkdown>{article}</ReactMarkdown>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Placeholder quand aucun résultat */
+              <div className="flex items-center justify-center h-full min-h-[500px]">
+                <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                    <Sparkles className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-500 mb-1">
+                    Votre contenu généré apparaîtra ici
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Remplissez le formulaire et cliquez sur "Générer l'article"
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </main>
   )
