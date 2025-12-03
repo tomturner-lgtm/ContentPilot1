@@ -30,11 +30,11 @@ export default function Header() {
 
   if (quota.isLoading) {
     return (
-      <header className="border-b border-gray-200 bg-white">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-gray-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              ContentFlow
+            <Link href="/" className="text-xl font-bold tracking-tight text-slate-900">
+              ContentPilot
             </Link>
           </div>
         </div>
@@ -44,34 +44,40 @@ export default function Header() {
 
   return (
     <>
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-50 transition-colors">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-gray-100">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="text-xl font-bold text-gray-900 dark:text-gray-100 transition-colors">
-                ContentFlow
+            <div className="flex items-center gap-8">
+              <Link href="/" className="text-xl font-bold tracking-tight text-slate-900 hover:text-slate-700 transition-colors">
+                ContentPilot
               </Link>
               <Link
                 href="/articles"
-                className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
               >
                 Mes Articles
               </Link>
               <Link
                 href="/integrations"
-                className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
               >
                 Intégrations
+              </Link>
+              <Link
+                href="/pricing"
+                className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
+              >
+                Tarifs
               </Link>
             </div>
 
             <div className="flex items-center gap-4">
               {/* Plan actuel */}
               <div className="hidden sm:block">
-                <span className={`text-xs font-medium ${
+                <span className={`text-xs font-semibold tracking-wide ${
                   plan.currentPlanType === 'pro' 
-                    ? 'bg-primary-100 text-primary-700 px-2 py-1 rounded font-semibold' 
-                    : 'text-gray-500'
+                    ? 'bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full' 
+                    : 'text-slate-500'
                 }`}>
                   {plan.currentPlanType === 'pro' ? 'PRO' : `Plan ${PLAN_NAMES[plan.currentPlanType]}`}
                 </span>
@@ -80,7 +86,7 @@ export default function Header() {
               {/* Badge de quota */}
               <div className="hidden sm:flex flex-col items-end">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-slate-700">
                     {plan.isUnlimited() ? (
                       <>{quota.count} articles générés</>
                     ) : (
@@ -90,9 +96,9 @@ export default function Header() {
                 </div>
                 {/* Barre de progression */}
                 {!plan.isUnlimited() && (
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden mt-1">
+                  <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
                     <div
-                      className="h-full bg-primary-600 transition-all duration-300"
+                      className="h-full bg-indigo-600 transition-all duration-300 rounded-full"
                       style={{ width: `${quota.usagePercentage}%` }}
                     />
                   </div>

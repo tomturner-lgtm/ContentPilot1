@@ -17,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr" className="transition-colors" suppressHydrationWarning>
-      <body className={`${inter.className} transition-colors`}>
+    <html lang="fr" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${inter.className} bg-white text-slate-900 antialiased`}>
         <ToastProvider>
           <Header />
           {children}
