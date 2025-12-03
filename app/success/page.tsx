@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePlan } from '@/hooks/usePlan'
 
-export default function SuccessPage() {
-  const searchParams = useSearchParams()
+// 1. Crée un composant séparé pour tout le contenu logique
+function SuccessContent() {
+  const searchParams = useSearchParams() // Le hook est déplacé ici
   const router = useRouter()
   const plan = usePlan()
   const [loading, setLoading] = useState(true)
@@ -194,6 +195,22 @@ export default function SuccessPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+// 2. Ta page principale devient juste une coquille vide avec Suspense
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </main>
+    }>
+      <SuccessContent />
+    </Suspense>
   )
 }
 
