@@ -9,8 +9,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   // 1. On définit les variables avec une sécurité pour le build
-  const supabaseUrl = process.env.SUPABASE_URL || 'https://example.com'
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key'
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzYyNzUxMCwiZXhwIjoyMDc5MjAzNTEwfQ.lVs1sV7kW8O8cetg5Pf6C9NRq2s2v1e1afSedw4k18g'
 
   // 2. On initialise le client ici
   const supabase = createClient(supabaseUrl, supabaseKey)
