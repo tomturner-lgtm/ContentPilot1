@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    // On sécurise les variables pour le build avec des valeurs de fallback
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
     const {
       data: { user },
     } = await supabase.auth.getUser()
