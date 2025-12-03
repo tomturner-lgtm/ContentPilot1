@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 
 const PLAN_NAMES: Record<string, string> = {
   free: 'Gratuit',
+  test: 'Test',
   pro: 'Pro',
   max: 'Max',
 }

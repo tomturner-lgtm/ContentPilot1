@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-export type PlanType = 'free' | 'pro' | 'max'
+export type PlanType = 'free' | 'test' | 'pro' | 'max'
 export type BillingPeriod = 'monthly' | 'yearly'
 
 const PLAN_STORAGE_KEY = 'contentflow_plan'
@@ -14,13 +14,15 @@ export interface PlanData {
 // Limites par plan (cachée dans le code pour Max)
 export const PLAN_LIMITS: Record<PlanType, number> = {
   free: 1,
+  test: 1, // Plan Test à 5€ : 1 article one-time
   pro: 30, // Plan Pro payant avec Stripe : 30 articles
   max: 200, // Limite cachée, annoncé comme "illimité"
 }
 
-// Prix mensuels
+// Prix mensuels (ou one-time pour 'test')
 export const PLAN_PRICES: Record<PlanType, number> = {
   free: 0,
+  test: 5, // Plan Test : 5€ one-time
   pro: 50,
   max: 100,
 }
@@ -96,7 +98,7 @@ export function usePlan() {
 
   // Obtenir le prix annuel (11 mois payés, 1 mois offert)
   const getYearlyPrice = useCallback(() => {
-    if (!plan || plan.type === 'free') return 0
+    if (!plan || plan.type === 'free' || plan.type === 'test') return 0
     const monthlyPrice = PLAN_PRICES[plan.type]
     return monthlyPrice * 11 // 1 mois gratuit = 11 mois payés
   }, [plan])
@@ -104,6 +106,8 @@ export function usePlan() {
   // Obtenir le prix affiché selon la période de facturation
   const getDisplayPrice = useCallback(() => {
     if (!plan || plan.type === 'free') return 0
+    // Le plan 'test' est un one-time purchase, pas un abonnement
+    if (plan.type === 'test') return PLAN_PRICES.test
     return plan.billingPeriod === 'yearly'
       ? getYearlyPrice()
       : getMonthlyPrice()
