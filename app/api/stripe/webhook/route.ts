@@ -7,12 +7,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
 })
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(req: Request) {
+  // 1. On définit les variables avec une sécurité pour le build
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://example.com'
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-key'
+
+  // 2. On initialise le client ici
+  const supabase = createClient(supabaseUrl, supabaseKey)
   const body = await req.text()
   const signature = headers().get('stripe-signature')!
 
