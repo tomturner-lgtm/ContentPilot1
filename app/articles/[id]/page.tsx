@@ -124,8 +124,8 @@ export default function ArticleDetailPage() {
   const copyHTML = async () => {
     if (!article) return
     try {
-      const html = markdownToHtml(article.content)
-      await navigator.clipboard.writeText(html)
+      const html = await markdownToHtml(article.content) // <--- Ajoute await ici
+await navigator.clipboard.writeText(html)
       alert('HTML copié dans le presse-papiers !')
     } catch (err) {
       alert('Erreur lors de la copie')
