@@ -4,8 +4,18 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 
+// Force le rendu dynamique pour éviter les erreurs de build
+// Next.js ne pourra plus pré-rendre cette page statiquement
+export const dynamic = 'force-dynamic'
+
 // Fonction pour récupérer l'utilisateur
 async function getUser() {
+  // S'assurer que les variables d'environnement ont des valeurs de fallback
+  // pour éviter les erreurs pendant le build
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
+  
+  // Utiliser createRouteHandlerClient qui gère automatiquement les cookies
   const supabase = createRouteHandlerClient({ cookies })
   const {
     data: { user },
@@ -21,8 +31,11 @@ async function getUser() {
 
 // Fonction pour récupérer l'abonnement depuis user_quotas
 async function getUserSubscription(userId: string) {
-  const supabase = createRouteHandlerClient({ cookies })
+  // S'assurer que les variables d'environnement ont des valeurs de fallback
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
   
+  const supabase = createRouteHandlerClient({ cookies })
   const { data: quota, error } = await supabase
     .from('user_quotas')
     .select('*')
