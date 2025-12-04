@@ -2,8 +2,6 @@
  * ContentPilot - API Interactions
  */
 
-const API_BASE_URL = 'https://contentpilot1-production.up.railway.app'; // From prompt
-
 async function checkQuota() {
     try {
         // Get supabase client from global scope (set by auth.js)
@@ -16,7 +14,7 @@ async function checkQuota() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) return null;
 
-        const response = await fetch(`${API_BASE_URL}/api/user/check-quota`, {
+        const response = await fetch('/api/user/check-quota', {
             headers: {
                 'Authorization': `Bearer ${session.access_token}`
             }
