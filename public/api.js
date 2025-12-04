@@ -14,7 +14,7 @@ async function checkQuota() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) return null;
 
-        const response = await fetch('/api/user/check-quota', {
+        const response = await fetch('/backend/user/check-quota', {
             headers: {
                 'Authorization': `Bearer ${session.access_token}`
             }
