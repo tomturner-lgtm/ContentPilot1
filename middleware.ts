@@ -2,21 +2,16 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   // Routes protégées
-  const protectedPaths = ['/profile', '/dashboard']
+  const protectedPaths = ['/profile', '/dashboard', '/generate']
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
-  // Vérifier si l'utilisateur a une session Supabase
-  // Supabase stocke les sessions dans des cookies avec le pattern sb-{project-ref}-auth-token
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
-  const projectRef = supabaseUrl.split('//')[1]?.split('.')[0] || 'ybfbfmbnlsvgyhtzctpl'
-  
-  // Chercher les cookies Supabase standard
-  const authToken = request.cookies.get(`sb-${projectRef}-auth-token`)?.value
-  const accessToken = request.cookies.get('sb-access-token')?.value
-  
-  const hasSession = !!(authToken || accessToken)
+  // Vérifier si l'utilisateur a une session Better Auth
+  // Better Auth stocke les sessions dans des cookies
+  const sessionToken = request.cookies.get('better-auth.session_token')?.value
+
+  const hasSession = !!sessionToken
 
   // Si l'utilisateur n'est pas connecté et essaie d'accéder à une route protégée
   if (!hasSession && isProtectedPath) {
@@ -25,9 +20,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Si l'utilisateur est connecté et essaie d'accéder à /login, rediriger vers /profile
+  // Si l'utilisateur est connecté et essaie d'accéder à /login, rediriger vers /dashboard
   if (hasSession && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/profile', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return NextResponse.next()
@@ -41,8 +36,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api routes (let API handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
-

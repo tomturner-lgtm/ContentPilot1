@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',
@@ -11,21 +11,22 @@ export async function POST(req: NextRequest) {
   try {
     const { priceId } = await req.json()
 
-    // Get current user
-    const supabase = createRouteHandlerClient({ cookies })
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    // Vérifier la session Better Auth
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
 
-    if (!user) {
+    if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+
+    const user = session.user
 
     // Check if it's a one-time purchase or subscription
     const mode =
       priceId === process.env.STRIPE_PRICE_TEST ? 'payment' : 'subscription'
 
-    const session = await stripe.checkout.sessions.create({
+    const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
@@ -43,10 +44,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: checkoutSession.url })
   } catch (err: any) {
     console.error('Error creating checkout session:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
-

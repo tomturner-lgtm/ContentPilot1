@@ -3,80 +3,43 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-})
+import { signIn, useSession } from '@/lib/auth-client'
 
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isSignUp, setIsSignUp] = useState(false)
+  const { data: session } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
 
-  // Vérifier si l'utilisateur est déjà connecté
+  // Rediriger si déjà connecté
   useEffect(() => {
-    const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        const redirectTo = searchParams.get('redirect') || '/profile'
-        router.push(redirectTo)
-      }
+    if (session) {
+      const redirectTo = searchParams.get('redirect') || '/dashboard'
+      router.push(redirectTo)
     }
-    checkUser()
-  }, [router, searchParams])
+  }, [session, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setMessage(null)
 
     try {
-      if (isSignUp) {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        })
+      const result = await signIn.email({
+        email,
+        password,
+      })
 
-        if (signUpError) throw signUpError
-
-        if (data.user) {
-          setMessage('Compte créé avec succès ! Vérifiez votre email pour confirmer votre compte.')
-          // Optionnel : rediriger après inscription
-          setTimeout(() => {
-            setIsSignUp(false)
-          }, 3000)
-        }
-      } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-
-        if (signInError) throw signInError
-
-        if (data.session) {
-          // Supabase gère automatiquement les cookies, mais on peut forcer le refresh
-          // Rediriger vers le profil ou la page demandée
-          const redirectTo = searchParams.get('redirect') || '/profile'
-          window.location.href = redirectTo
-        }
+      if (result.error) {
+        throw new Error(result.error.message || 'Email ou mot de passe incorrect')
       }
+
+      // Redirection après connexion réussie
+      const redirectTo = searchParams.get('redirect') || '/dashboard'
+      router.push(redirectTo)
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue')
     } finally {
@@ -94,12 +57,10 @@ function LoginContent() {
             </h1>
           </Link>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">
-            {isSignUp ? 'Créer un compte' : 'Se connecter'}
+            Se connecter
           </h2>
           <p className="text-slate-500">
-            {isSignUp
-              ? 'Commencez à générer des articles dès aujourd\'hui'
-              : 'Accédez à votre espace personnel'}
+            Accédez à votre espace personnel
           </p>
         </div>
 
@@ -122,27 +83,6 @@ function LoginContent() {
                     />
                   </svg>
                   <p className="text-sm text-red-800">{error}</p>
-                </div>
-              </div>
-            )}
-
-            {message && (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-4">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <p className="text-sm text-green-800">{message}</p>
                 </div>
               </div>
             )}
@@ -210,10 +150,8 @@ function LoginContent() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  {isSignUp ? 'Création...' : 'Connexion...'}
+                  Connexion...
                 </span>
-              ) : isSignUp ? (
-                'Créer mon compte'
               ) : (
                 'Se connecter'
               )}
@@ -221,19 +159,12 @@ function LoginContent() {
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp)
-                setError(null)
-                setMessage(null)
-              }}
+            <Link
+              href="/signup"
               className="text-sm text-slate-600 hover:text-indigo-600 transition-colors"
             >
-              {isSignUp
-                ? 'Déjà un compte ? Se connecter'
-                : 'Pas encore de compte ? S\'inscrire'}
-            </button>
+              Pas encore de compte ? S'inscrire
+            </Link>
           </div>
         </div>
 
@@ -264,4 +195,3 @@ export default function LoginPage() {
     </Suspense>
   )
 }
-

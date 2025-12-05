@@ -5,6 +5,7 @@ import { useQuota } from '@/hooks/useQuota'
 import { usePlan } from '@/hooks/usePlan'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { useEffect, useState } from 'react'
+import { useSession } from '@/lib/auth-client'
 
 const PLAN_NAMES: Record<string, string> = {
   free: 'Gratuit',
@@ -18,6 +19,7 @@ export default function Header() {
   const plan = usePlan()
   const { isDark, toggleDarkMode } = useDarkMode()
   const [showAlert, setShowAlert] = useState(false)
+  const { data: session } = useSession()
 
   // Afficher l'alerte s'il ne reste qu'1 article
   useEffect(() => {
@@ -75,11 +77,10 @@ export default function Header() {
             <div className="flex items-center gap-4">
               {/* Plan actuel */}
               <div className="hidden sm:block">
-                <span className={`text-xs font-semibold tracking-wide ${
-                  plan.currentPlanType === 'pro' 
-                    ? 'bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full' 
-                    : 'text-slate-500'
-                }`}>
+                <span className={`text-xs font-semibold tracking-wide ${plan.currentPlanType === 'pro'
+                  ? 'bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full'
+                  : 'text-slate-500'
+                  }`}>
                   {plan.currentPlanType === 'pro' ? 'PRO' : `Plan ${PLAN_NAMES[plan.currentPlanType]}`}
                 </span>
               </div>
@@ -108,11 +109,10 @@ export default function Header() {
 
               {/* Version mobile */}
               <div className="sm:hidden flex items-center gap-2">
-                <span className={`text-xs ${
-                  plan.currentPlanType === 'pro' 
-                    ? 'bg-primary-100 text-primary-700 px-2 py-1 rounded font-semibold' 
-                    : 'text-gray-500'
-                }`}>
+                <span className={`text-xs ${plan.currentPlanType === 'pro'
+                  ? 'bg-primary-100 text-primary-700 px-2 py-1 rounded font-semibold'
+                  : 'text-gray-500'
+                  }`}>
                   {plan.currentPlanType === 'pro' ? 'PRO' : PLAN_NAMES[plan.currentPlanType]}
                 </span>
                 <div className="px-3 py-1.5 bg-primary-50 rounded-lg">
@@ -121,6 +121,23 @@ export default function Header() {
                   </span>
                 </div>
               </div>
+
+              {/* Bouton Connexion / Dashboard */}
+              {session ? (
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-all"
+                >
+                  Connexion
+                </Link>
+              )}
             </div>
           </div>
         </div>

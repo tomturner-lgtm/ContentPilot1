@@ -2,20 +2,63 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { getTemplate, TemplateType, TEMPLATES } from '@/lib/templates'
 import { LanguageCode, LANGUAGES, getLanguage } from '@/lib/languages'
+import { auth } from '@/lib/auth'
+import { headers } from 'next/headers'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy instantiation pour éviter les erreurs de build
+const getOpenAI = () => {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Vérifier la session Better Auth
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Vous devez être connecté pour générer un article' },
+        { status: 401 }
+      )
+    }
+
+    // Vérifier le quota
+    const quotaResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/user/check-quota`,
+      {
+        headers: {
+          cookie: request.headers.get('cookie') || '',
+        },
+      }
+    )
+
+    if (!quotaResponse.ok) {
+      return NextResponse.json(
+        { error: 'Erreur lors de la vérification du quota' },
+        { status: 500 }
+      )
+    }
+
+    const quotaData = await quotaResponse.json()
+
+    if (!quotaData.canGenerate) {
+      return NextResponse.json(
+        { error: 'Quota épuisé. Achetez des crédits pour continuer à générer des articles.' },
+        { status: 403 }
+      )
+    }
+
     const { title, keyword, length, template, language } = await request.json()
-    
+
     // Langue par défaut : français
-    const articleLanguage: LanguageCode = (language && language in LANGUAGES) 
-      ? (language as LanguageCode) 
+    const articleLanguage: LanguageCode = (language && language in LANGUAGES)
+      ? (language as LanguageCode)
       : 'fr'
-    
+
     const langData = getLanguage(articleLanguage)
 
     if (!title || !keyword) {
@@ -38,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     if (template && template in TEMPLATES) {
       const templateData = getTemplate(template as TemplateType)
-      
+
       // Construire le prompt avec le template et la langue
       prompt = `Tu es un expert en rédaction d'articles de blog SEO spécialisé dans le format "${templateData.name}".
 
@@ -83,7 +126,7 @@ Article :`
       systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création d'articles de blog optimisés SEO en ${langData.nativeName}. Tu génères du contenu structuré en Markdown avec un style ${langData.style}.`
     }
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {

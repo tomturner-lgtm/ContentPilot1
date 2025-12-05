@@ -1,69 +1,73 @@
-import { redirect } from 'next/navigation'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import LogoutButton from '@/components/LogoutButton'
+import { useSession, signOut } from '@/lib/auth-client'
 
-// Force le rendu dynamique pour éviter les erreurs de build
-// Next.js ne pourra plus pré-rendre cette page statiquement
-export const dynamic = 'force-dynamic'
-
-// Fonction pour récupérer l'utilisateur
-async function getUser() {
-  // S'assurer que les variables d'environnement ont des valeurs de fallback
-  // pour éviter les erreurs pendant le build
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
-  
-  // Utiliser createRouteHandlerClient qui gère automatiquement les cookies
-  const supabase = createRouteHandlerClient({ cookies })
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
-    return null
-  }
-
-  return user
+interface Subscription {
+  plan_type: string
+  articles_used: number
+  articles_limit: number
+  reset_date: string | null
+  stripe_subscription_id: string | null
 }
 
-// Fonction pour récupérer l'abonnement depuis user_quotas
-async function getUserSubscription(userId: string) {
-  // S'assurer que les variables d'environnement ont des valeurs de fallback
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV4Z2dvamxlbGF4YmlseGNrdGpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjc1MTAsImV4cCI6MjA3OTIwMzUxMH0.BNfsDlt4duHGu2npsE0ixiYpeogYmRNEh0j_4c34QKc'
-  
-  const supabase = createRouteHandlerClient({ cookies })
-  const { data: quota, error } = await supabase
-    .from('user_quotas')
-    .select('*')
-    .eq('user_id', userId)
-    .single()
+export default function ProfilePage() {
+  const router = useRouter()
+  const { data: session, isPending } = useSession()
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (error || !quota) {
-    return null
+  // Rediriger si non connecté
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.push('/login?redirect=/profile')
+    }
+  }, [session, isPending, router])
+
+  // Charger les infos d'abonnement
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!session) return
+
+      try {
+        const response = await fetch('/api/user/check-quota')
+        if (response.ok) {
+          const data = await response.json()
+          setSubscription({
+            plan_type: data.plan,
+            articles_used: data.articlesUsed,
+            articles_limit: data.articlesLimit,
+            reset_date: data.resetDate,
+            stripe_subscription_id: null,
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching subscription:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (session) {
+      fetchSubscription()
+    }
+  }, [session])
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/')
   }
-
-  return quota
-}
-
-export default async function ProfilePage() {
-  const user = await getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
-  const subscription = await getUserSubscription(user.id)
 
   // Formater le nom du plan
   const getPlanName = (planType: string) => {
     const planNames: Record<string, string> = {
+      free: 'Gratuit',
       test: 'Test',
       pro: 'Pro',
       unlimited: 'Max',
+      max: 'Max',
     }
     return planNames[planType] || planType
   }
@@ -77,6 +81,24 @@ export default async function ProfilePage() {
       year: 'numeric',
     })
   }
+
+  // Loading state
+  if (isPending || loading) {
+    return (
+      <main className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Chargement...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!session) {
+    return null
+  }
+
+  const user = session.user
 
   return (
     <main className="min-h-screen bg-white">
@@ -125,6 +147,15 @@ export default async function ProfilePage() {
             </div>
 
             <div className="space-y-4">
+              {user.name && (
+                <div>
+                  <label className="text-sm font-medium text-slate-500 block mb-1">
+                    Nom
+                  </label>
+                  <p className="text-slate-900 font-medium">{user.name}</p>
+                </div>
+              )}
+
               <div>
                 <label className="text-sm font-medium text-slate-500 block mb-1">
                   Email
@@ -138,15 +169,6 @@ export default async function ProfilePage() {
                 </label>
                 <p className="text-slate-600 text-sm font-mono break-all">
                   {user.id}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">
-                  Date d'inscription
-                </label>
-                <p className="text-slate-900">
-                  {formatDate(user.created_at)}
                 </p>
               </div>
             </div>
@@ -232,17 +254,6 @@ export default async function ProfilePage() {
                   </div>
                 )}
 
-                {subscription.stripe_subscription_id && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-500 block mb-1">
-                      ID Abonnement Stripe
-                    </label>
-                    <p className="text-slate-600 text-sm font-mono break-all">
-                      {subscription.stripe_subscription_id}
-                    </p>
-                  </div>
-                )}
-
                 <div className="pt-4 border-t border-gray-200">
                   <Link
                     href="/pricing"
@@ -289,10 +300,14 @@ export default async function ProfilePage() {
 
         {/* Bouton de déconnexion */}
         <div className="mt-8 flex justify-end">
-          <LogoutButton />
+          <button
+            onClick={handleSignOut}
+            className="rounded-xl border border-gray-200 px-6 py-3 text-base font-medium text-slate-700 hover:bg-slate-50 transition-all"
+          >
+            Se déconnecter
+          </button>
         </div>
       </div>
     </main>
   )
 }
-
