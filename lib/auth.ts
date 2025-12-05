@@ -2,67 +2,63 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 
 // ========================================
-// DEBUG LOGS - Configuration
+// DEBUG LOGS
 // ========================================
-console.log("=== BETTER AUTH CONFIGURATION DEBUG ===");
+console.log("=== BETTER AUTH CONFIGURATION ===");
 console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-console.log("DATABASE_URL length:", process.env.DATABASE_URL?.length || 0);
 console.log("BETTER_AUTH_SECRET exists:", !!process.env.BETTER_AUTH_SECRET);
-console.log("BETTER_AUTH_SECRET length:", process.env.BETTER_AUTH_SECRET?.length || 0);
-console.log("NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL || "NOT SET");
-console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("NEXT_PUBLIC_APP_URL:", process.env.NEXT_PUBLIC_APP_URL);
 
-// Créer le pool PostgreSQL avec support SSL pour Railway/Supabase
+// Créer le pool PostgreSQL avec support SSL pour Supabase
 let pool: Pool | undefined;
 
-try {
-    if (process.env.DATABASE_URL) {
-        console.log("Creating PostgreSQL Pool...");
+if (process.env.DATABASE_URL) {
+    try {
+        // Log le hostname pour debug
+        const url = new URL(process.env.DATABASE_URL);
+        console.log("Database host:", url.hostname);
+        console.log("Database port:", url.port);
+
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
             ssl: {
                 rejectUnauthorized: false,
             },
+            // Timeout plus court pour les serverless
+            connectionTimeoutMillis: 10000,
+            idleTimeoutMillis: 10000,
+            max: 1, // Une seule connexion pour serverless
         });
-        console.log("PostgreSQL Pool created successfully");
 
-        // Test de connexion (async, ne bloque pas)
-        pool.query('SELECT 1')
-            .then(() => console.log("Database connection test: SUCCESS"))
-            .catch((err) => console.error("Database connection test: FAILED", err.message));
-    } else {
-        console.warn("DATABASE_URL not set - Pool not created");
+        console.log("PostgreSQL Pool created");
+    } catch (error) {
+        console.error("Failed to create Pool:", error);
     }
-} catch (error) {
-    console.error("Error creating PostgreSQL Pool:", error);
+} else {
+    console.warn("DATABASE_URL not set");
 }
 
-// Liste des origines autorisées
+// Origines autorisées
 const trustedOrigins = [
     "http://localhost:3000",
     "https://contentpilot.fr",
     "https://www.contentpilot.fr",
-    "https://contentpilot1-production.up.railway.app",
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-].filter(Boolean);
+    process.env.NEXT_PUBLIC_APP_URL,
+].filter(Boolean) as string[];
 
-console.log("Trusted origins:", trustedOrigins);
-
-// Configuration de Better Auth
+// Configuration Better Auth
 let auth: ReturnType<typeof betterAuth>;
 
 try {
-    console.log("Creating Better Auth instance...");
-
     auth = betterAuth({
         database: pool as any,
         emailAndPassword: {
             enabled: true,
             requireEmailVerification: false,
         },
-        secret: process.env.BETTER_AUTH_SECRET || "build-time-placeholder-secret-change-me",
+        secret: process.env.BETTER_AUTH_SECRET || "dev-secret-change-in-production",
         baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        trustedOrigins: trustedOrigins,
+        trustedOrigins,
         advanced: {
             crossSubDomainCookies: {
                 enabled: true,
@@ -89,17 +85,11 @@ try {
             },
         },
     });
-
-    console.log("Better Auth instance created successfully");
+    console.log("Better Auth initialized successfully");
 } catch (error) {
-    console.error("=== BETTER AUTH CREATION ERROR ===");
-    console.error("Error type:", error instanceof Error ? error.constructor.name : typeof error);
-    console.error("Error message:", error instanceof Error ? error.message : String(error));
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack");
+    console.error("Better Auth initialization failed:", error);
     throw error;
 }
-
-console.log("=== END BETTER AUTH DEBUG ===");
 
 export { auth };
 export type Session = typeof auth.$Infer.Session;
