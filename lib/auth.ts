@@ -1,12 +1,22 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 
-// Créer le pool PostgreSQL uniquement si DATABASE_URL est défini
-const pool = process.env.DATABASE_URL
-    ? new Pool({
+// Créer le pool PostgreSQL avec support SSL pour Railway/Supabase
+const createPool = () => {
+    if (!process.env.DATABASE_URL) {
+        console.warn("DATABASE_URL not set, using undefined pool");
+        return undefined;
+    }
+
+    return new Pool({
         connectionString: process.env.DATABASE_URL,
-    })
-    : undefined;
+        ssl: {
+            rejectUnauthorized: false, // Nécessaire pour Railway/Supabase
+        },
+    });
+};
+
+const pool = createPool();
 
 // Liste des origines autorisées
 const trustedOrigins = [
