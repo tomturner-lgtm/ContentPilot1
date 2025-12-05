@@ -17,7 +17,6 @@
     "marked": "^11.1.1",
     "next": "^14.0.4",
     "openai": "^4.20.1",
-    "pg": "^8.16.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
@@ -25,7 +24,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
-    "@types/pg": "^8.15.6",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@types/ws": "^8.18.1",

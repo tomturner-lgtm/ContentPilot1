@@ -3,24 +3,29 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { signIn, useSession } from '@/lib/auth-client'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: session } = useSession()
+  const supabase = createClientComponentClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSignUp, setIsSignUp] = useState(false)
 
-  // Rediriger si déjà connecté
+  // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
-    if (session) {
-      const redirectTo = searchParams.get('redirect') || '/dashboard'
-      router.push(redirectTo)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const redirectTo = searchParams.get('redirect') || '/profile'
+        router.push(redirectTo)
+      }
     }
-  }, [session, router, searchParams])
+    checkSession()
+  }, [supabase, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,18 +33,26 @@ function LoginContent() {
     setError(null)
 
     try {
-      const result = await signIn.email({
-        email,
-        password,
-      })
-
-      if (result.error) {
-        throw new Error(result.error.message || 'Email ou mot de passe incorrect')
+      if (isSignUp) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        })
+        if (signUpError) throw signUpError
+        setError('Vérifiez votre email pour confirmer votre inscription.')
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (signInError) throw signInError
+        const redirectTo = searchParams.get('redirect') || '/profile'
+        router.push(redirectTo)
+        router.refresh()
       }
-
-      // Redirection après connexion réussie
-      const redirectTo = searchParams.get('redirect') || '/dashboard'
-      router.push(redirectTo)
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue')
     } finally {
@@ -57,41 +70,23 @@ function LoginContent() {
             </h1>
           </Link>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">
-            Se connecter
+            {isSignUp ? 'Créer un compte' : 'Se connecter'}
           </h2>
           <p className="text-slate-500">
-            Accédez à votre espace personnel
+            {isSignUp ? 'Rejoignez ContentPilot' : 'Accédez à votre espace personnel'}
           </p>
         </div>
 
         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-4">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                    />
-                  </svg>
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
+              <div className={`rounded-xl p-4 ${error.includes('Vérifiez') ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <p className={`text-sm ${error.includes('Vérifiez') ? 'text-green-800' : 'text-red-800'}`}>{error}</p>
               </div>
             )}
 
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-700 mb-2"
-              >
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 Email
               </label>
               <input
@@ -106,10 +101,7 @@ function LoginContent() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-700 mb-2"
-              >
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 Mot de passe
               </label>
               <input
@@ -127,52 +119,24 @@ function LoginContent() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-slate-800 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full rounded-xl bg-slate-900 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-slate-800 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="animate-spin h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Connexion...
-                </span>
-              ) : (
-                'Se connecter'
-              )}
+              {loading ? 'Chargement...' : (isSignUp ? 'S\'inscrire' : 'Se connecter')}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <Link
-              href="/signup"
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm text-slate-600 hover:text-indigo-600 transition-colors"
             >
-              Pas encore de compte ? S'inscrire
-            </Link>
+              {isSignUp ? 'Déjà un compte ? Se connecter' : 'Pas encore de compte ? S\'inscrire'}
+            </button>
           </div>
         </div>
 
         <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
-          >
+          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
             ← Retour à l'accueil
           </Link>
         </div>
@@ -185,10 +149,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Chargement...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </main>
     }>
       <LoginContent />

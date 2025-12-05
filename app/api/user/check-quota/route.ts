@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 
 export async function GET(req: NextRequest) {
   try {
-    // Vérifier la session Better Auth
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    })
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    if (!session) {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const userId = session.user.id
-
-    // On sécurise les variables pour le build avec des valeurs de fallback
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ybfbfmbnlsvgyhtzctpl.supabase.co'
+    // Variables Supabase pour les requêtes RPC
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
 
-    const supabase = createClient(supabaseUrl, supabaseKey)
-
-    // Get user quota using the existing RPC function
-    const { data: quotaData, error: quotaError } = await supabase.rpc(
+    // Get user quota using the RPC function
+    const { data: quotaData, error: quotaError } = await supabaseAdmin.rpc(
       'get_user_quota',
-      {
-        p_user_id: userId,
-      }
+      { p_user_id: user.id }
     )
 
     if (quotaError) {
@@ -46,7 +41,6 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Parse the JSON response from the function
     const quota = quotaData as {
       plan_type: string
       articles_limit: number
@@ -57,17 +51,16 @@ export async function GET(req: NextRequest) {
       has_unlimited: boolean
     }
 
-    // Check if user can generate an article
     const canGenerate =
       quota.has_unlimited ||
       quota.articles_remaining > 0 ||
       quota.one_time_purchases_available > 0
 
-    // Get one-time purchases count
-    const { data: oneTimePurchases, error: purchasesError } = await supabase
+    // Get one-time purchases
+    const { data: oneTimePurchases } = await supabaseAdmin
       .from('one_time_purchases')
       .select('id, used, created_at')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('used', false)
 
     return NextResponse.json({

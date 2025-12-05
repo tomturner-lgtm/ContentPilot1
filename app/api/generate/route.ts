@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { getTemplate, TemplateType, TEMPLATES } from '@/lib/templates'
 import { LanguageCode, LANGUAGES, getLanguage } from '@/lib/languages'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
 
 // Lazy instantiation pour éviter les erreurs de build
 const getOpenAI = () => {
@@ -14,44 +12,6 @@ const getOpenAI = () => {
 
 export async function POST(request: NextRequest) {
   try {
-    // Vérifier la session Better Auth
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    })
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Vous devez être connecté pour générer un article' },
-        { status: 401 }
-      )
-    }
-
-    // Vérifier le quota
-    const quotaResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/user/check-quota`,
-      {
-        headers: {
-          cookie: request.headers.get('cookie') || '',
-        },
-      }
-    )
-
-    if (!quotaResponse.ok) {
-      return NextResponse.json(
-        { error: 'Erreur lors de la vérification du quota' },
-        { status: 500 }
-      )
-    }
-
-    const quotaData = await quotaResponse.json()
-
-    if (!quotaData.canGenerate) {
-      return NextResponse.json(
-        { error: 'Quota épuisé. Achetez des crédits pour continuer à générer des articles.' },
-        { status: 403 }
-      )
-    }
-
     const { title, keyword, length, template, language } = await request.json()
 
     // Langue par défaut : français
@@ -82,7 +42,6 @@ export async function POST(request: NextRequest) {
     if (template && template in TEMPLATES) {
       const templateData = getTemplate(template as TemplateType)
 
-      // Construire le prompt avec le template et la langue
       prompt = `Tu es un expert en rédaction d'articles de blog SEO spécialisé dans le format "${templateData.name}".
 
 Génère un article de blog professionnel et bien structuré avec les spécifications suivantes :
@@ -104,7 +63,6 @@ ${templateData.prompt}
 Article :`
       systemMessage = `Tu es un rédacteur professionnel spécialisé dans la création d'articles de blog optimisés SEO au format "${templateData.name}" en ${langData.nativeName}. Tu génères du contenu structuré en Markdown avec un ton ${templateData.tone} et un style ${langData.style}.`
     } else {
-      // Prompt par défaut (sans template) avec langue
       prompt = `Tu es un expert en rédaction d'articles de blog SEO. 
 
 Génère un article de blog professionnel et bien structuré avec les spécifications suivantes :
@@ -129,14 +87,8 @@ Article :`
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        {
-          role: 'system',
-          content: systemMessage,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: prompt },
       ],
       temperature: 0.7,
       max_tokens: 2000,
