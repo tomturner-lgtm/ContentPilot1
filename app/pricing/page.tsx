@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Check, Sparkles, Zap, Crown } from 'lucide-react'
+import { Check, X, Sparkles, Zap, Crown } from 'lucide-react'
 
 interface StripePrices {
   test: string | null
@@ -14,6 +14,18 @@ interface StripePrices {
   unlimitedYearly: string | null
 }
 
+// Fonctionnalités pour la comparaison
+const FEATURES = [
+  { name: 'Articles par mois', test: '1', pro: '30', max: '100' },
+  { name: 'Templates disponibles', test: true, pro: true, max: true },
+  { name: '5 langues (FR, EN, ES, DE, IT)', test: true, pro: true, max: true },
+  { name: 'Export WordPress', test: false, pro: true, max: true },
+  { name: 'Support prioritaire', test: false, pro: true, max: true },
+  { name: 'Historique des articles', test: false, pro: true, max: true },
+  { name: 'API access', test: false, pro: false, max: true },
+  { name: 'Multi-utilisateurs', test: false, pro: false, max: true },
+]
+
 export default function PricingPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -22,7 +34,6 @@ export default function PricingPage() {
   const [prices, setPrices] = useState<StripePrices | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  // Charger les price IDs depuis l'API
   useEffect(() => {
     const fetchPrices = async () => {
       try {
@@ -36,7 +47,6 @@ export default function PricingPage() {
     fetchPrices()
   }, [])
 
-  // Vérifier si l'utilisateur est connecté
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -51,7 +61,6 @@ export default function PricingPage() {
       return
     }
 
-    // Vérifier si l'utilisateur est connecté
     if (!isLoggedIn) {
       router.push('/login?redirect=/pricing')
       return
@@ -59,7 +68,6 @@ export default function PricingPage() {
 
     try {
       setLoading(priceId)
-
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,11 +80,8 @@ export default function PricingPage() {
       }
 
       const data = await response.json()
-
       if (data.url) {
         window.location.href = data.url
-      } else {
-        throw new Error('URL de checkout non reçue')
       }
     } catch (error) {
       console.error('Erreur checkout:', error)
@@ -94,14 +99,8 @@ export default function PricingPage() {
       priceMonthly: 5,
       priceYearly: 5,
       isOneTime: true,
-      features: [
-        '1 article SEO optimisé',
-        'Tous les templates',
-        '5 langues disponibles',
-        'Sans engagement',
-      ],
       priceId: prices?.test,
-      popular: false,
+      color: 'slate',
     },
     {
       id: 'pro',
@@ -111,34 +110,20 @@ export default function PricingPage() {
       priceMonthly: 50,
       priceYearly: 550,
       isOneTime: false,
-      features: [
-        '50 articles / mois',
-        'Tous les templates',
-        '5 langues disponibles',
-        'Export WordPress',
-        'Support prioritaire',
-      ],
       priceId: billingPeriod === 'monthly' ? prices?.proMonthly : prices?.proYearly,
+      color: 'indigo',
       popular: true,
     },
     {
-      id: 'unlimited',
+      id: 'max',
       name: 'Max',
       description: 'Pour les agences',
       icon: Crown,
       priceMonthly: 100,
       priceYearly: 1100,
       isOneTime: false,
-      features: [
-        'Articles illimités',
-        'Tous les templates',
-        '5 langues disponibles',
-        'Export WordPress',
-        'Support prioritaire',
-        'API access',
-      ],
       priceId: billingPeriod === 'monthly' ? prices?.unlimitedMonthly : prices?.unlimitedYearly,
-      popular: false,
+      color: 'purple',
     },
   ]
 
@@ -155,11 +140,11 @@ export default function PricingPage() {
           </Link>
         </div>
 
-        <div className="text-center mb-16">
+        <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl mb-4">
             Plans et tarifs
           </h1>
-          <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10">
+          <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-8">
             Choisissez le plan qui correspond à vos besoins
           </p>
 
@@ -172,20 +157,16 @@ export default function PricingPage() {
               onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'yearly' : 'monthly')}
               className="relative inline-flex h-7 w-12 items-center rounded-full bg-indigo-600 transition-colors"
             >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${billingPeriod === 'yearly' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-              />
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${billingPeriod === 'yearly' ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
             <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-slate-900' : 'text-slate-500'}`}>
-              Annuel
-              <span className="ml-1 text-xs text-green-600 font-semibold">-10%</span>
+              Annuel <span className="text-xs text-green-600 font-semibold">-10%</span>
             </span>
           </div>
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid gap-8 lg:grid-cols-3">
+        {/* Plans Cards */}
+        <div className="grid gap-6 lg:grid-cols-3 mb-16">
           {plans.map((plan) => {
             const Icon = plan.icon
             const displayPrice = plan.isOneTime ? plan.priceMonthly : (billingPeriod === 'monthly' ? plan.priceMonthly : plan.priceYearly)
@@ -193,13 +174,12 @@ export default function PricingPage() {
             return (
               <div
                 key={plan.id}
-                id={plan.id}
-                className={`relative rounded-2xl bg-white border ${plan.popular ? 'border-indigo-200 ring-2 ring-indigo-600' : 'border-gray-200'
-                  } shadow-sm p-8`}
+                className={`relative rounded-2xl bg-white border-2 ${plan.popular ? 'border-indigo-500 shadow-lg shadow-indigo-100' : 'border-gray-200'
+                  } p-6 sm:p-8`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-full">
-                    POPULAIRE
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-4 py-1.5 rounded-full">
+                    ⭐ RECOMMANDÉ
                   </div>
                 )}
 
@@ -221,9 +201,7 @@ export default function PricingPage() {
                       {plan.isOneTime ? '' : billingPeriod === 'monthly' ? '/mois' : '/an'}
                     </span>
                   </div>
-                  {plan.isOneTime && (
-                    <p className="text-sm text-slate-500 mt-1">Paiement unique</p>
-                  )}
+                  {plan.isOneTime && <p className="text-sm text-slate-500 mt-1">Paiement unique</p>}
                   {!plan.isOneTime && billingPeriod === 'yearly' && (
                     <p className="text-sm text-green-600 mt-1">
                       Économisez {Math.round(plan.priceMonthly * 12 - plan.priceYearly)}€/an
@@ -231,30 +209,20 @@ export default function PricingPage() {
                   )}
                 </div>
 
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-slate-600">
-                      <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
                 <button
                   onClick={() => handleCheckout(plan.priceId || null)}
                   disabled={loading === plan.priceId || !prices}
-                  className={`w-full rounded-xl px-6 py-3 text-base font-semibold transition-all ${plan.popular
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : 'bg-slate-900 text-white hover:bg-slate-800'
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`w-full rounded-xl px-6 py-3.5 text-base font-semibold transition-all hover:scale-[1.02] ${plan.popular
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                    } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                 >
                   {loading === plan.priceId ? (
                     <span className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Chargement...
                     </span>
                   ) : (
-                    isLoggedIn ? 'Choisir ce plan' : 'Se connecter pour acheter'
+                    isLoggedIn ? 'Choisir ce plan' : 'Se connecter'
                   )}
                 </button>
               </div>
@@ -262,8 +230,68 @@ export default function PricingPage() {
           })}
         </div>
 
-        {/* FAQ ou infos */}
-        <div className="mt-16 text-center text-slate-500 text-sm">
+        {/* Tableau comparatif */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-slate-50">
+            <h3 className="text-lg font-semibold text-slate-900">Comparaison des fonctionnalités</h3>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-4 px-6 font-medium text-slate-600">Fonctionnalité</th>
+                  <th className="text-center py-4 px-4 font-semibold text-slate-900">Test</th>
+                  <th className="text-center py-4 px-4 font-semibold text-indigo-600 bg-indigo-50">Pro</th>
+                  <th className="text-center py-4 px-4 font-semibold text-purple-600">Max</th>
+                </tr>
+              </thead>
+              <tbody>
+                {FEATURES.map((feature, index) => (
+                  <tr key={index} className="border-b border-gray-100 last:border-0">
+                    <td className="py-4 px-6 text-sm text-slate-700">{feature.name}</td>
+                    <td className="py-4 px-4 text-center">
+                      {typeof feature.test === 'boolean' ? (
+                        feature.test ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-sm font-medium text-slate-900">{feature.test}</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-center bg-indigo-50/50">
+                      {typeof feature.pro === 'boolean' ? (
+                        feature.pro ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-sm font-medium text-indigo-600">{feature.pro}</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {typeof feature.max === 'boolean' ? (
+                        feature.max ? (
+                          <Check className="h-5 w-5 text-green-500 mx-auto" />
+                        ) : (
+                          <X className="h-5 w-5 text-slate-300 mx-auto" />
+                        )
+                      ) : (
+                        <span className="text-sm font-medium text-purple-600">{feature.max}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 text-center text-slate-500 text-sm">
           <p>Paiement sécurisé par Stripe • Annulation à tout moment</p>
         </div>
       </div>

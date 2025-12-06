@@ -11,21 +11,21 @@ export default function Home() {
             <span className="text-xs font-semibold text-slate-700 tracking-wide">✨ Nouveau</span>
             <span className="text-xs text-slate-500">Version 1.0</span>
           </div>
-          
+
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl mb-6">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600">
               ContentPilot
             </span>
           </h1>
-          
+
           <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Générez des articles de blog optimisés SEO en un clic avec l'IA. 
+            Générez des articles de blog optimisés SEO en un clic avec l'IA.
             Créez du contenu professionnel en quelques secondes.
           </p>
-          
+
           <div className="flex items-center justify-center gap-4">
             <Link
-              href="/generate"
+              href="/pricing"
               className="rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white shadow-sm hover:bg-slate-800 hover:scale-105 transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
               Commencer maintenant
