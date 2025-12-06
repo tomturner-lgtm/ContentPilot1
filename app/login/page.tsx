@@ -17,7 +17,6 @@ function LoginContent() {
   const [success, setSuccess] = useState<string | null>(null)
   const [isSignUp, setIsSignUp] = useState(false)
 
-  // Vérifier si l'utilisateur est déjà connecté
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -37,8 +36,7 @@ function LoginContent() {
 
     try {
       if (isSignUp) {
-        // Inscription
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -50,19 +48,8 @@ function LoginContent() {
         })
 
         if (signUpError) throw signUpError
-
-        // Créer le profil immédiatement si l'utilisateur est créé
-        if (data.user) {
-          await supabase.from('profiles').upsert({
-            user_id: data.user.id,
-            email: email,
-            first_name: firstName,
-          })
-        }
-
         setSuccess('Compte créé ! Vérifiez votre email pour confirmer votre inscription.')
       } else {
-        // Connexion
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -89,7 +76,6 @@ function LoginContent() {
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-6">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -104,10 +90,8 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Messages */}
             {error && (
               <div className="rounded-xl bg-red-50 border border-red-200 p-4">
                 <p className="text-sm text-red-800">{error}</p>
@@ -120,7 +104,6 @@ function LoginContent() {
               </div>
             )}
 
-            {/* Prénom (seulement pour l'inscription) */}
             {isSignUp && (
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-slate-700 mb-2">
@@ -138,7 +121,6 @@ function LoginContent() {
               </div>
             )}
 
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 Email
@@ -154,7 +136,6 @@ function LoginContent() {
               />
             </div>
 
-            {/* Mot de passe */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 Mot de passe
@@ -174,7 +155,6 @@ function LoginContent() {
               )}
             </div>
 
-            {/* Bouton Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -191,7 +171,6 @@ function LoginContent() {
             </button>
           </form>
 
-          {/* Toggle inscription/connexion */}
           <div className="mt-6 text-center">
             <button
               onClick={() => {
@@ -206,7 +185,6 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* Retour accueil */}
         <div className="mt-6 text-center">
           <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 transition-colors">
             ← Retour à l'accueil
