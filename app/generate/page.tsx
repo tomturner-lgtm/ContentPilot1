@@ -110,7 +110,7 @@ export default function GeneratePage() {
       setProgress(100)
       clearInterval(progressInterval)
       setArticle(data.article)
-      
+
       // Sauvegarder l'article dans l'historique
       const savedArticle = articles.saveArticle({
         title,
@@ -118,7 +118,7 @@ export default function GeneratePage() {
         keyword,
         length: parseInt(length),
       })
-      
+
       // Incrémenter le quota après succès
       quota.incrementQuota()
 
@@ -166,8 +166,10 @@ export default function GeneratePage() {
     handleSubmit(new Event('submit') as any)
   }
 
-  // Afficher le message de limite atteinte si le quota est épuisé
+  // Afficher le paywall si le quota est épuisé ou inexistant
   if (!quota.isLoading && !quota.canGenerate) {
+    const isNewUser = quota.limit === 0
+
     return (
       <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
@@ -181,35 +183,65 @@ export default function GeneratePage() {
             </Link>
           </div>
 
-          {/* Message de limite atteinte */}
-          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
-              <svg
-                className="h-8 w-8 text-red-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.5"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                />
-              </svg>
+          {/* Paywall Card */}
+          <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-white border border-indigo-100 shadow-sm p-8 text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-indigo-100">
+              <Sparkles className="h-10 w-10 text-indigo-600" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
-              Limite atteinte
+
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-3">
+              {isNewUser ? 'Commencez à générer des articles' : 'Limite atteinte'}
             </h2>
-            <p className="text-slate-600 mb-6">
-              Vous avez utilisé vos {quota.limit} article{quota.limit > 1 ? 's' : ''} {quota.planType === 'test' ? 'du plan Test' : quota.planType === 'pro' ? 'du plan Pro' : 'du plan Max'} ce mois-ci.
+
+            <p className="text-slate-600 mb-8 max-w-md mx-auto">
+              {isNewUser
+                ? 'Pour générer des articles SEO optimisés avec notre IA, choisissez un plan adapté à vos besoins.'
+                : `Vous avez utilisé vos ${quota.limit} article${quota.limit > 1 ? 's' : ''} ce mois-ci.`}
             </p>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
-            >
-              {quota.planType === 'test' ? 'Passer au plan Pro ou Max' : 'Voir les plans'}
-            </Link>
+
+            {/* Options de paiement */}
+            <div className="grid gap-4 sm:grid-cols-2 max-w-2xl mx-auto mb-8">
+              {/* Option Abonnement - Mise en avant */}
+              <Link
+                href="/pricing"
+                className="relative group rounded-2xl bg-indigo-600 p-6 text-left hover:bg-indigo-700 transition-all hover:scale-[1.02]"
+              >
+                <div className="absolute -top-3 -right-3 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">
+                  RECOMMANDÉ
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">
+                  Abonnement mensuel
+                </h3>
+                <p className="text-indigo-200 text-sm mb-4">
+                  Générez jusqu'à 50 articles/mois avec le plan Pro
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-white">29€</span>
+                  <span className="text-indigo-200">/mois</span>
+                </div>
+              </Link>
+
+              {/* Option Achat unique */}
+              <Link
+                href="/pricing#test"
+                className="group rounded-2xl bg-white border-2 border-slate-200 p-6 text-left hover:border-indigo-300 transition-all hover:scale-[1.02]"
+              >
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  Essai unique
+                </h3>
+                <p className="text-slate-600 text-sm mb-4">
+                  Testez avec 1 article sans engagement
+                </p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-slate-900">5€</span>
+                  <span className="text-slate-500">une fois</span>
+                </div>
+              </Link>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Paiement sécurisé par Stripe • Annulation à tout moment
+            </p>
           </div>
         </div>
       </main>
