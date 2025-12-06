@@ -36,20 +36,33 @@ function LoginContent() {
 
     try {
       if (isSignUp) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-            data: {
-              first_name: firstName,
-            },
-          },
+        // INSCRIPTION via API serveur
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, firstName }),
         })
 
-        if (signUpError) throw signUpError
-        setSuccess('Compte créé ! Vérifiez votre email pour confirmer votre inscription.')
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de l\'inscription')
+        }
+
+        // Connexion automatique après inscription
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (signInError) {
+          setSuccess('Compte créé ! Vous pouvez maintenant vous connecter.')
+        } else {
+          router.push('/dashboard')
+          router.refresh()
+        }
       } else {
+        // CONNEXION classique
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -63,7 +76,7 @@ function LoginContent() {
     } catch (err: any) {
       if (err.message.includes('Invalid login credentials')) {
         setError('Email ou mot de passe incorrect')
-      } else if (err.message.includes('User already registered')) {
+      } else if (err.message.includes('already')) {
         setError('Cet email est déjà utilisé. Connectez-vous plutôt.')
       } else {
         setError(err.message || 'Une erreur est survenue')
