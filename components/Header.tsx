@@ -120,8 +120,8 @@ export default function Header() {
 
               {/* Bouton Connexion / Profil */}
               {isLoggedIn ? (
-                <Link href="/profile" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all">
-                  Mon Profil
+                <Link href="/dashboard" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all">
+                  Dashboard
                 </Link>
               ) : (
                 <Link href="/login" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-all">
