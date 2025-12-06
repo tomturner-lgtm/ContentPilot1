@@ -92,7 +92,7 @@ export default function PricingPage() {
       description: 'Essayez avec 1 article',
       icon: Sparkles,
       priceMonthly: 5,
-      priceYearly: 5, // One-time, pas d'annuel
+      priceYearly: 5,
       isOneTime: true,
       features: [
         '1 article SEO optimisé',
@@ -108,8 +108,8 @@ export default function PricingPage() {
       name: 'Pro',
       description: 'Idéal pour les créateurs',
       icon: Zap,
-      priceMonthly: 29,
-      priceYearly: 290, // ~10 mois
+      priceMonthly: 50,
+      priceYearly: 550,
       isOneTime: false,
       features: [
         '50 articles / mois',
@@ -126,8 +126,8 @@ export default function PricingPage() {
       name: 'Max',
       description: 'Pour les agences',
       icon: Crown,
-      priceMonthly: 79,
-      priceYearly: 790, // ~10 mois
+      priceMonthly: 100,
+      priceYearly: 1100,
       isOneTime: false,
       features: [
         'Articles illimités',
@@ -179,7 +179,7 @@ export default function PricingPage() {
             </button>
             <span className={`text-sm font-medium ${billingPeriod === 'yearly' ? 'text-slate-900' : 'text-slate-500'}`}>
               Annuel
-              <span className="ml-1 text-xs text-green-600 font-semibold">-17%</span>
+              <span className="ml-1 text-xs text-green-600 font-semibold">-10%</span>
             </span>
           </div>
         </div>
@@ -244,8 +244,8 @@ export default function PricingPage() {
                   onClick={() => handleCheckout(plan.priceId || null)}
                   disabled={loading === plan.priceId || !prices}
                   className={`w-full rounded-xl px-6 py-3 text-base font-semibold transition-all ${plan.popular
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-slate-900 text-white hover:bg-slate-800'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {loading === plan.priceId ? (
