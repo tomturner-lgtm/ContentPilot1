@@ -146,7 +146,7 @@ export default function PricingPage() {
             // Allow "Test" purchase always (it's one-time)
             const canPurchase = plan.isOneTime || isUpgrade || !currentPlan || (isCurrentPlan && false) // Can't re-subscribe to exact same plan here easily without portal
 
-            let buttonText = isLoggedIn ? 'Choisir ce plan' : 'Se connecter'
+            let buttonText = isLoggedIn ? 'Choisir ce plan' : 'Commencer'
             if (isLoggedIn && !planLoading) {
               if (isCurrentPlan) buttonText = 'Plan actuel'
               else if (isUpgrade) buttonText = 'Mettre à niveau'
