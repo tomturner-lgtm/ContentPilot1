@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import OpenAI from 'openai'
 import { getTemplate, TemplateType, TEMPLATES } from '@/lib/templates'
 import { LanguageCode, LANGUAGES, getLanguage } from '@/lib/languages'
@@ -12,7 +14,37 @@ const getOpenAI = () => {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Non authentifié' },
+        { status: 401 }
+      )
+    }
+
     const { title, keyword, length, template, language } = await request.json()
+
+    // Vérifier et utiliser le quota
+    const { data: quotaResult, error: quotaError } = await supabase.rpc('check_and_use_quota', {
+      p_user_id: session.user.id
+    })
+
+    if (quotaError) {
+      console.error('Erreur quota:', quotaError)
+      return NextResponse.json(
+        { error: 'Erreur lors de la vérification du quota' },
+        { status: 500 }
+      )
+    }
+
+    if (!quotaResult.success) {
+      return NextResponse.json(
+        { error: quotaResult.message || 'Quota épuisé' },
+        { status: 403 }
+      )
+    }
 
     // Langue par défaut : français
     const articleLanguage: LanguageCode = (language && language in LANGUAGES)
@@ -94,16 +126,34 @@ Article :`
       max_tokens: 2000,
     })
 
-    const article = completion.choices[0]?.message?.content
+    const articleContent = completion.choices[0]?.message?.content
 
-    if (!article) {
+    if (!articleContent) {
       return NextResponse.json(
         { error: 'Impossible de générer l\'article' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ article })
+    // Sauvegarder l'article dans la base de données
+    const { error: saveError } = await supabase
+      .from('articles')
+      .insert({
+        user_id: session.user.id,
+        title,
+        content: articleContent,
+        keyword,
+        language: articleLanguage,
+        template: template || null,
+        word_count: length, // Estimation basée sur la demande
+      })
+
+    if (saveError) {
+      console.error('Erreur sauvegarde article:', saveError)
+      // On ne retourne pas d'erreur ici car l'article a été généré
+    }
+
+    return NextResponse.json({ article: articleContent })
   } catch (error) {
     console.error('Erreur OpenAI:', error)
     return NextResponse.json(

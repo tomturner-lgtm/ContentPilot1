@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { usePlan, PLAN_LIMITS } from './usePlan'
 
 const STORAGE_KEY = 'contentflow_quota'
@@ -10,115 +11,96 @@ interface QuotaData {
 
 export function useQuota() {
   const plan = usePlan()
+  const supabase = createClientComponentClient()
   const [quota, setQuota] = useState<QuotaData>({ count: 0, lastReset: '' })
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  // Obtenir la limite selon le plan actuel (recalculé quand le plan change)
+  // Obtenir la limite selon le plan actuel
+  // On utilise la limite du plan défini dans usePlan pour l'affichage cohérent
+  // mais on utilisera aussi les données serveur si disponibles
   const quotaLimit = useMemo(() => {
     if (!plan.plan || plan.isLoading) return PLAN_LIMITS.free
     return PLAN_LIMITS[plan.plan.type]
   }, [plan.plan?.type, plan.isLoading])
 
-  // Vérifier si on est dans un nouveau mois
-  const shouldReset = useCallback((lastReset: string): boolean => {
-    if (!lastReset) return true
-    
-    const lastResetDate = new Date(lastReset)
-    const now = new Date()
-    
-    return (
-      lastResetDate.getMonth() !== now.getMonth() ||
-      lastResetDate.getFullYear() !== now.getFullYear()
-    )
-  }, [])
-
-  // Initialiser ou réinitialiser le quota
-  const initializeQuota = useCallback(() => {
+  // Charger le quota depuis le serveur
+  const fetchQuota = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      
-      if (stored) {
-        const quotaData: QuotaData = JSON.parse(stored)
-        
-        if (shouldReset(quotaData.lastReset)) {
-          // Reset du quota pour le nouveau mois
-          const newQuota: QuotaData = {
-            count: 0,
-            lastReset: new Date().toISOString().split('T')[0],
-          }
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(newQuota))
-          setQuota(newQuota)
-        } else {
-          setQuota(quotaData)
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (session) {
+        const { data, error } = await supabase.rpc('get_user_quota', {
+          p_user_id: session.user.id
+        })
+
+        if (data && !error) {
+          // Mettre à jour avec les données serveur
+          setQuota({
+            count: data.articles_used,
+            lastReset: data.reset_date
+          })
+          // Sync localStorage pour offline/fallback
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            count: data.articles_used,
+            lastReset: data.reset_date
+          }))
         }
       } else {
-        // Premier utilisateur
-        const newQuota: QuotaData = {
-          count: 0,
-          lastReset: new Date().toISOString().split('T')[0],
+        // Fallback localStorage si non connecté (pour démo/test)
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (stored) {
+          setQuota(JSON.parse(stored))
         }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newQuota))
-        setQuota(newQuota)
       }
     } catch (error) {
-      console.error('Erreur lors de l\'initialisation du quota:', error)
-      setQuota({ count: 0, lastReset: new Date().toISOString().split('T')[0] })
+      console.error('Erreur chargement quota:', error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
-  }, [shouldReset])
+  }, [supabase])
 
-  // Charger le quota au montage
+  // Charger au montage et quand le user change
   useEffect(() => {
-    initializeQuota()
-  }, [initializeQuota])
+    fetchQuota()
+  }, [fetchQuota])
 
-  // Incrémenter le quota
-  const incrementQuota = useCallback(() => {
-    try {
-      const newQuota: QuotaData = {
-        count: quota.count + 1,
-        lastReset: quota.lastReset,
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newQuota))
-      setQuota(newQuota)
-    } catch (error) {
-      console.error('Erreur lors de l\'incrémentation du quota:', error)
-    }
-  }, [quota])
+  // Incrémenter le quota (optimiste + serveur)
+  const incrementQuota = useCallback(async () => {
+    // 1. Mise à jour optimiste
+    setQuota(prev => {
+      const next = { ...prev, count: prev.count + 1 }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
 
-  // Mettre à jour la limite quand le plan change
-  useEffect(() => {
-    if (!plan.isLoading && plan.plan) {
-      // Si on change de plan, on pourrait vouloir réinitialiser le quota
-      // Pour l'instant, on garde le quota actuel
-    }
-  }, [plan])
-
-  // Vérifier si le quota est disponible
-  const canGenerate = useCallback(() => {
-    return quota.count < quotaLimit
-  }, [quota, quotaLimit])
+    // 2. Le vrai compte sera mis à jour au prochain fetch ou par le refresh
+    // On peut aussi forcer un refresh après un court délai pour être sûr
+    setTimeout(() => {
+      fetchQuota()
+    }, 1000)
+  }, [fetchQuota])
 
   // Obtenir le pourcentage utilisé
   const getUsagePercentage = useCallback(() => {
-    if (quotaLimit === 0) return 0
+    if (quotaLimit === 0) return 100
+    // S'assurer qu'on ne dépasse pas 100% visuellement
     return Math.min(100, (quota.count / quotaLimit) * 100)
-  }, [quota, quotaLimit])
+  }, [quota.count, quotaLimit])
 
   // Obtenir le nombre d'articles restants
   const getRemaining = useCallback(() => {
     return Math.max(0, quotaLimit - quota.count)
-  }, [quota, quotaLimit])
+  }, [quota.count, quotaLimit])
 
   return {
     count: quota.count,
     limit: quotaLimit,
     remaining: getRemaining(),
     usagePercentage: getUsagePercentage(),
-    canGenerate: canGenerate(),
-    isLoading: isLoading || plan.isLoading,
+    canGenerate: quota.count < quotaLimit,
+    isLoading: loading || plan.isLoading,
     incrementQuota,
+    refreshQuota: fetchQuota, // Expose refresh function
     lastReset: quota.lastReset,
     planType: plan.plan?.type || 'free',
   }

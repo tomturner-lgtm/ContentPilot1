@@ -125,7 +125,7 @@ export default function ArticleDetailPage() {
     if (!article) return
     try {
       const html = await markdownToHtml(article.content) // <--- Ajoute await ici
-await navigator.clipboard.writeText(html)
+      await navigator.clipboard.writeText(html)
       alert('HTML copié dans le presse-papiers !')
     } catch (err) {
       alert('Erreur lors de la copie')
@@ -365,7 +365,7 @@ await navigator.clipboard.writeText(html)
           </div>
 
           {/* Contenu de l'article */}
-          <div className="prose prose-lg max-w-none">
+          <div className="prose prose-lg max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900">
             <ReactMarkdown className="text-gray-700 leading-7">
               {article.content}
             </ReactMarkdown>

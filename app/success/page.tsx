@@ -18,7 +18,7 @@ function SuccessContent() {
     if (sessionId) {
       // Activer le plan Pro dans localStorage
       plan.updatePlan('pro', 'monthly')
-      
+
       // Simuler un délai pour vérifier la session
       setTimeout(() => {
         setLoading(false)
@@ -101,7 +101,7 @@ function SuccessContent() {
           <p className="text-lg text-gray-600 mb-6">
             Bienvenue dans le Plan Pro ! Votre abonnement a été activé avec succès.
           </p>
-          
+
           <div className="rounded-lg bg-primary-50 border border-primary-200 p-6 mb-6 text-left">
             <h3 className="font-semibold text-primary-900 mb-3">
               Ce que vous obtenez avec le Plan Pro :
@@ -179,18 +179,18 @@ function SuccessContent() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/generate"
+            <button
+              onClick={() => window.location.href = '/generate'}
               className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-primary-700 transition-colors"
             >
               Générer mon premier article Pro
-            </Link>
-            <Link
-              href="/articles"
+            </button>
+            <button
+              onClick={() => window.location.href = '/articles'}
               className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-6 py-3 text-base font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
             >
               Voir mes articles
-            </Link>
+            </button>
           </div>
         </div>
       </div>

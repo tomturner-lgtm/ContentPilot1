@@ -1,121 +1,46 @@
 -- ============================================
--- FIX RLS POLICIES - ContentPilot
--- ============================================
--- Ce script corrige les warnings du linter Supabase :
--- 1. Remplace auth.uid() par (select auth.uid()) pour optimiser les performances
--- 2. Supprime les politiques dupliquées
+-- FIX RLS POLICIES FOR PROFILES TABLE
 -- ============================================
 
--- ============================================
--- 1. SUPPRIMER TOUTES LES POLITIQUES EXISTANTES
--- ============================================
+-- 1. Create profiles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  first_name TEXT,
+  last_name TEXT,
+  email TEXT,
+  company_name TEXT,
+  website_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(user_id)
+);
 
--- Supprimer toutes les politiques pour éviter les doublons
-DROP POLICY IF EXISTS "Users can view their own quota" ON user_quotas;
-DROP POLICY IF EXISTS "Users can update their own quota" ON user_quotas;
-DROP POLICY IF EXISTS "Users can insert their own quota" ON user_quotas;
-DROP POLICY IF EXISTS "Users can view their own purchases" ON one_time_purchases;
-DROP POLICY IF EXISTS "Users can update their own purchases" ON one_time_purchases;
-DROP POLICY IF EXISTS "Users can insert their own purchases" ON one_time_purchases;
-DROP POLICY IF EXISTS "Users view own" ON one_time_purchases;
-DROP POLICY IF EXISTS "Users can view their own articles" ON articles;
-DROP POLICY IF EXISTS "Users can insert their own articles" ON articles;
-DROP POLICY IF EXISTS "Users can update their own articles" ON articles;
-DROP POLICY IF EXISTS "Users can delete their own articles" ON articles;
-DROP POLICY IF EXISTS "Users can manage own articles" ON articles;
-DROP POLICY IF EXISTS "Users can view their own WordPress config" ON wordpress_configs;
-DROP POLICY IF EXISTS "Users can create their own WordPress config" ON wordpress_configs;
-DROP POLICY IF EXISTS "Users can update their own WordPress config" ON wordpress_configs;
-DROP POLICY IF EXISTS "Users can delete their own WordPress config" ON wordpress_configs;
+-- 2. Enable RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- ============================================
--- 2. RECRÉER LES POLITIQUES AVEC (select auth.uid())
--- ============================================
+-- 3. Create policies
+-- Allow users to view their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
+CREATE POLICY "Users can view own profile"
+  ON public.profiles FOR SELECT
+  USING (auth.uid() = user_id);
 
--- Policies pour user_quotas (optimisées)
-CREATE POLICY "Users can view their own quota" 
-  ON user_quotas FOR SELECT 
-  USING ((select auth.uid()) = user_id);
+-- Allow users to insert their own profile
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile"
+  ON public.profiles FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own quota" 
-  ON user_quotas FOR UPDATE 
-  USING ((select auth.uid()) = user_id);
+-- Allow users to update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+CREATE POLICY "Users can update own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own quota" 
-  ON user_quotas FOR INSERT 
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Policies pour one_time_purchases (optimisées, une seule politique par action)
-CREATE POLICY "Users can view their own purchases" 
-  ON one_time_purchases FOR SELECT 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can update their own purchases" 
-  ON one_time_purchases FOR UPDATE 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can insert their own purchases" 
-  ON one_time_purchases FOR INSERT 
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Policies pour articles (optimisées, une seule politique par action)
--- Note: On garde les politiques spécifiques plutôt qu'une politique "manage" pour plus de clarté
-CREATE POLICY "Users can view their own articles" 
-  ON articles FOR SELECT 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can insert their own articles" 
-  ON articles FOR INSERT 
-  WITH CHECK ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can update their own articles" 
-  ON articles FOR UPDATE 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can delete their own articles" 
-  ON articles FOR DELETE 
-  USING ((select auth.uid()) = user_id);
-
--- Policies pour wordpress_configs (optimisées)
-CREATE POLICY "Users can view their own WordPress config" 
-  ON wordpress_configs FOR SELECT 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can create their own WordPress config" 
-  ON wordpress_configs FOR INSERT 
-  WITH CHECK ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can update their own WordPress config" 
-  ON wordpress_configs FOR UPDATE 
-  USING ((select auth.uid()) = user_id);
-
-CREATE POLICY "Users can delete their own WordPress config" 
-  ON wordpress_configs FOR DELETE 
-  USING ((select auth.uid()) = user_id);
-
--- ============================================
--- 3. VÉRIFICATION
--- ============================================
-
--- Vérifier que les politiques sont bien créées
-SELECT 
-  schemaname,
-  tablename,
-  policyname,
-  permissive,
-  roles,
-  cmd
-FROM pg_policies 
-WHERE schemaname = 'public'
-ORDER BY tablename, policyname;
-
--- ============================================
--- FIN DU SCRIPT
--- ============================================
--- 
--- Après exécution, les warnings du linter devraient disparaître.
--- Les politiques utilisent maintenant (select auth.uid()) pour une meilleure performance.
--- 
--- ============================================
-
-
+-- 4. Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
+CREATE TRIGGER update_profiles_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
