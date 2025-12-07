@@ -95,7 +95,7 @@ export default function PricingPage() {
       priceMonthly: 5,
       priceYearly: 5,
       isOneTime: true,
-      priceId: prices?.test,
+      priceId: prices?.test || 'price_1SVW9TCQc7L9vhgD6NrtRBK4',
       color: 'slate',
     },
     {
@@ -106,7 +106,9 @@ export default function PricingPage() {
       priceMonthly: 50,
       priceYearly: 550,
       isOneTime: false,
-      priceId: billingPeriod === 'monthly' ? prices?.proMonthly : prices?.proYearly,
+      priceId: billingPeriod === 'monthly'
+        ? (prices?.proMonthly || 'price_1SVGLwCQc7L9vhgDOp2cw4wn')
+        : (prices?.proYearly || 'price_1SVUXJCQc7L9vhgDVShAMmE4'),
       color: 'indigo',
       popular: true,
     },
@@ -118,7 +120,9 @@ export default function PricingPage() {
       priceMonthly: 100,
       priceYearly: 1100,
       isOneTime: false,
-      priceId: billingPeriod === 'monthly' ? prices?.unlimitedMonthly : prices?.unlimitedYearly,
+      priceId: billingPeriod === 'monthly'
+        ? (prices?.unlimitedMonthly || 'price_1SVGMbCQc7L9vhgDuc2zUVyS')
+        : (prices?.unlimitedYearly || 'price_1SVUXXCQc7L9vhgDEkMjivDk'),
       color: 'purple',
     },
   ]
@@ -136,8 +140,8 @@ export default function PricingPage() {
             <button
               onClick={() => setBillingPeriod('monthly')}
               className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${billingPeriod === 'monthly'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               Mensuel
@@ -145,8 +149,8 @@ export default function PricingPage() {
             <button
               onClick={() => setBillingPeriod('yearly')}
               className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${billingPeriod === 'yearly'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               Annuel <span className="text-green-400 text-xs ml-1">-17%</span>
