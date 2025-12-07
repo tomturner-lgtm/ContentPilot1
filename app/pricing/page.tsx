@@ -196,7 +196,7 @@ export default function PricingPage() {
 
                 <button
                   onClick={() => handleCheckout(plan.priceId || null, plan.id)}
-                  disabled={loading === plan.priceId || !prices || (isCurrentPlan && !plan.isOneTime) || (!isUpgrade && !plan.isOneTime && isLoggedIn && currentPlan?.type !== 'free')}
+                  disabled={(loading !== null && loading === plan.priceId) || !prices || (isCurrentPlan && !plan.isOneTime) || (!isUpgrade && !plan.isOneTime && isLoggedIn && currentPlan?.type !== 'free')}
                   className={`w-full rounded-xl px-6 py-3.5 text-base font-semibold transition-all hover:scale-[1.02] ${isCurrentPlan
                     ? 'bg-green-100 text-green-700 cursor-default hover:scale-100'
                     : plan.popular
