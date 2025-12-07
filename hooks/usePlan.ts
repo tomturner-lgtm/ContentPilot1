@@ -115,7 +115,8 @@ export function usePlan() {
 
   // Vérifier si le plan est "illimité" (pour l'affichage)
   const isUnlimited = useCallback(() => {
-    return plan?.type === 'max'
+    // Max n'est plus illimité (200 articles)
+    return false
   }, [plan])
 
   return {

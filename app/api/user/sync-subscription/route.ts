@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
         priceId === process.env.STRIPE_PRICE_UNLIMITED_MONTHLY ||
         priceId === process.env.STRIPE_PRICE_UNLIMITED_YEARLY
       ) {
-        plan = 'unlimited'
+        plan = 'max'
       }
 
       // Update in Supabase using the RPC function

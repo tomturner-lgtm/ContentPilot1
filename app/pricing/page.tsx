@@ -16,7 +16,7 @@ interface StripePrices {
 
 // Fonctionnalités pour la comparaison
 const FEATURES = [
-  { name: 'Articles par mois', test: '1', pro: '30', max: '100' },
+  { name: 'Articles par mois', test: '1', pro: '30', max: '200' },
   { name: 'Templates disponibles', test: true, pro: true, max: true },
   { name: '5 langues (FR, EN, ES, DE, IT)', test: true, pro: true, max: true },
   { name: 'Export WordPress', test: false, pro: true, max: true },
@@ -213,8 +213,8 @@ export default function PricingPage() {
                   onClick={() => handleCheckout(plan.priceId || null)}
                   disabled={loading === plan.priceId || !prices}
                   className={`w-full rounded-xl px-6 py-3.5 text-base font-semibold transition-all hover:scale-[1.02] ${plan.popular
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-slate-900 text-white hover:bg-slate-800'
                     } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                 >
                   {loading === plan.priceId ? (

@@ -116,12 +116,12 @@ export default function Home() {
                 Plans flexibles
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                Test (5€), Pro (10 articles) ou Max (illimité). Paiement mensuel ou annuel avec 1 mois offert.
+                Test (5€), Pro (30 articles) ou Max (200 articles). Paiement mensuel ou annuel avec 1 mois offert.
               </p>
             </div>
           </div>
         </div>
       </section>
-    </main>
+    </main >
   )
 }

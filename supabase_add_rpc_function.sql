@@ -39,8 +39,10 @@ BEGIN
       v_articles_limit := 1; -- Fallback pour compatibilité
     WHEN 'pro' THEN
       v_articles_limit := 10;
+    WHEN 'max' THEN
+      v_articles_limit := 200;
     WHEN 'unlimited' THEN
-      v_articles_limit := 999999;
+      v_articles_limit := 200; -- Legacy mapping if needed
     ELSE
       v_articles_limit := 1;
   END CASE;

@@ -16,10 +16,10 @@ const PLAN_CONFIG: Record<string, { planType: string; articlesLimit: number }> =
   [process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_m']: { planType: 'pro', articlesLimit: 30 },
   // Pro annuel - 30 articles
   [process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_y']: { planType: 'pro', articlesLimit: 30 },
-  // Max mensuel - 100 articles
-  [process.env.STRIPE_PRICE_UNLIMITED_MONTHLY || 'price_max_m']: { planType: 'max', articlesLimit: 100 },
-  // Max annuel - 100 articles
-  [process.env.STRIPE_PRICE_UNLIMITED_YEARLY || 'price_max_y']: { planType: 'max', articlesLimit: 100 },
+  // Max mensuel - 200 articles
+  [process.env.STRIPE_PRICE_UNLIMITED_MONTHLY || 'price_max_m']: { planType: 'max', articlesLimit: 200 },
+  // Max annuel - 200 articles
+  [process.env.STRIPE_PRICE_UNLIMITED_YEARLY || 'price_max_y']: { planType: 'max', articlesLimit: 200 },
 }
 
 export async function POST(request: NextRequest) {

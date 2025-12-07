@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Sparkles, FileText, CreditCard, Settings, TrendingUp, Clock, ChevronRight } from 'lucide-react'
+import { PLAN_LIMITS, PlanType } from '@/hooks/usePlan'
 
 interface UserProfile {
     profile: {
@@ -206,13 +207,13 @@ export default function DashboardPage() {
                         </div>
                         <p className="text-sm font-medium text-slate-500 mb-1">Utilisés ce mois</p>
                         <p className="text-2xl font-bold text-slate-900">
-                            {profile.subscription.articles_used}/{profile.subscription.articles_limit || '∞'}
+                            {profile.subscription.articles_used}/{PLAN_LIMITS[profile.subscription.plan_type as PlanType] || profile.subscription.articles_limit || '∞'}
                         </p>
-                        {hasSubscription && profile.subscription.articles_limit > 0 && (
+                        {hasSubscription && (PLAN_LIMITS[profile.subscription.plan_type as PlanType] || profile.subscription.articles_limit) > 0 && (
                             <div className="mt-2 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-indigo-600 rounded-full transition-all"
-                                    style={{ width: `${Math.min((profile.subscription.articles_used / profile.subscription.articles_limit) * 100, 100)}%` }}
+                                    style={{ width: `${Math.min((profile.subscription.articles_used / (PLAN_LIMITS[profile.subscription.plan_type as PlanType] || profile.subscription.articles_limit)) * 100, 100)}%` }}
                                 />
                             </div>
                         )}
