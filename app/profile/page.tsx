@@ -88,7 +88,7 @@ export default function ProfilePage() {
           company_name: profile.company_name || null,
           website_url: profile.website_url || null,
           updated_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'user_id' })
 
       if (error) throw error
 
