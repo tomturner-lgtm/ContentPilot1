@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export type PlanType = 'free' | 'test' | 'pro' | 'max'
 export type BillingPeriod = 'monthly' | 'yearly'
@@ -28,38 +29,57 @@ export const PLAN_PRICES: Record<PlanType, number> = {
 }
 
 export function usePlan() {
+  const supabase = createClientComponentClient()
   const [plan, setPlan] = useState<PlanData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Charger le plan depuis localStorage
-  const loadPlan = useCallback(() => {
+  // Charger le plan depuis la base de données (source de vérité)
+  const loadPlan = useCallback(async () => {
     try {
+      // 1. Charger depuis le localStorage pour un affichage immédiat (optimiste)
       const stored = localStorage.getItem(PLAN_STORAGE_KEY)
       if (stored) {
-        const planData: PlanData = JSON.parse(stored)
-        setPlan(planData)
-      } else {
-        // Plan gratuit par défaut
+        setPlan(JSON.parse(stored))
+      }
+
+      // 2. Vérifier la session et charger depuis Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (session) {
+        const { data, error } = await supabase
+          .from('user_quotas')
+          .select('plan_type')
+          .eq('user_id', session.user.id)
+          .single()
+
+        if (data && !error) {
+          const dbPlanType = data.plan_type as PlanType
+          // Mettre à jour si différent
+          const newPlan: PlanData = {
+            type: dbPlanType || 'free', // Default to free if null
+            billingPeriod: 'monthly', // TODO: Fetch from DB if stored, specific column needed
+            startDate: new Date().toISOString().split('T')[0] // Approximation
+          }
+
+          setPlan(newPlan)
+          localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(newPlan))
+        }
+      } else if (!stored) {
+        // Pas de session et rien en cache -> Free/Test par défaut
         const defaultPlan: PlanData = {
           type: 'free',
           billingPeriod: 'monthly',
           startDate: new Date().toISOString().split('T')[0],
         }
-        localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(defaultPlan))
         setPlan(defaultPlan)
+        // Ne pas persister le "default" en local si l'utilisateur n'est pas connecté pour ne pas polluer
       }
     } catch (error) {
       console.error('Erreur lors du chargement du plan:', error)
-      const defaultPlan: PlanData = {
-        type: 'free',
-        billingPeriod: 'monthly',
-        startDate: new Date().toISOString().split('T')[0],
-      }
-      setPlan(defaultPlan)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [supabase])
 
   // Initialiser au montage
   useEffect(() => {
