@@ -130,6 +130,30 @@ export default function PricingPage() {
 
         {/* ... (keep existing header code) ... */}
 
+        {/* Billing Toggle */}
+        <div className="flex justify-center mb-10">
+          <div className="bg-white p-1 rounded-xl border border-gray-200 inline-flex">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${billingPeriod === 'monthly'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              Mensuel
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${billingPeriod === 'yearly'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              Annuel <span className="text-green-400 text-xs ml-1">-17%</span>
+            </button>
+          </div>
+        </div>
+
         {/* Plans Cards */}
         <div className="grid gap-6 lg:grid-cols-3 mb-16">
           {plans.map((plan) => {
