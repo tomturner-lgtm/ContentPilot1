@@ -5,6 +5,14 @@
 -- ==============================================================================
 
 -- =====================
+-- SUPPRIMER LES ANCIENNES FONCTIONS
+-- =====================
+
+DROP FUNCTION IF EXISTS public.check_and_use_quota(UUID);
+DROP FUNCTION IF EXISTS public.get_user_quota(UUID);
+DROP FUNCTION IF EXISTS public.update_subscription_from_stripe(TEXT, TEXT, TEXT, TEXT);
+
+-- =====================
 -- check_and_use_quota : Vérifie et consomme un article du quota
 -- =====================
 
