@@ -47,18 +47,18 @@ export function usePlan() {
 
       if (session) {
         const { data, error } = await supabase
-          .from('user_quotas')
-          .select('plan_type')
-          .eq('user_id', session.user.id)
+          .from('users')
+          .select('plan, billing_period')
+          .eq('auth_id', session.user.id)
           .single()
 
         if (data && !error) {
-          const dbPlanType = data.plan_type as PlanType
+          const dbPlanType = data.plan as PlanType
           // Mettre à jour si différent
           const newPlan: PlanData = {
-            type: dbPlanType || 'free', // Default to free if null
-            billingPeriod: 'monthly', // TODO: Fetch from DB if stored, specific column needed
-            startDate: new Date().toISOString().split('T')[0] // Approximation
+            type: dbPlanType || 'free',
+            billingPeriod: data.billing_period || 'monthly',
+            startDate: new Date().toISOString().split('T')[0]
           }
 
           setPlan(newPlan)

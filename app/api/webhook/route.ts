@@ -86,27 +86,25 @@ export async function POST(request: NextRequest) {
 
       console.log('Found user:', user.id)
 
-      // Mettre à jour le quota de l'utilisateur
-      const { error: quotaError } = await supabaseAdmin
-        .from('user_quotas')
-        .upsert({
-          user_id: user.id,
-          plan_type: planConfig.planType,
+      // Mettre à jour l'utilisateur dans la table users
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({
+          plan: planConfig.planType,
           articles_limit: planConfig.articlesLimit,
           articles_used: 0, // Reset à 0 pour le nouveau plan
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string || null,
           stripe_subscription_status: 'active',
-          reset_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+          quota_reset_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id'
         })
+        .eq('auth_id', user.id)
 
-      if (quotaError) {
-        console.error('Error updating quota:', quotaError)
+      if (updateError) {
+        console.error('Error updating user:', updateError)
       } else {
-        console.log('Quota updated successfully for user:', user.id)
+        console.log('User updated successfully:', user.id)
       }
 
       // Pour les achats ponctuels (test), créer un one_time_purchase
@@ -133,7 +131,7 @@ export async function POST(request: NextRequest) {
 
       // Mettre à jour le statut
       const { error } = await supabaseAdmin
-        .from('user_quotas')
+        .from('users')
         .update({
           stripe_subscription_status: subscription.status,
           updated_at: new Date().toISOString(),
@@ -150,9 +148,9 @@ export async function POST(request: NextRequest) {
 
       // Révoquer le plan (remettre en free)
       const { error } = await supabaseAdmin
-        .from('user_quotas')
+        .from('users')
         .update({
-          plan_type: 'free',
+          plan: 'free',
           articles_limit: 0,
           stripe_subscription_status: 'canceled',
           updated_at: new Date().toISOString(),

@@ -54,34 +54,8 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Créer le profil dans la table profiles
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .upsert({
-                user_id: authData.user.id,
-                email: email,
-                first_name: firstName || null,
-            })
-
-        if (profileError) {
-            console.error('Profile error:', profileError)
-            // On continue même si le profil échoue - le trigger peut le créer
-        }
-
-        // Créer le quota utilisateur (0 articles - plan free)
-        const { error: quotaError } = await supabaseAdmin
-            .from('user_quotas')
-            .upsert({
-                user_id: authData.user.id,
-                plan_type: 'free',
-                articles_limit: 0,
-                articles_used: 0,
-            })
-
-        if (quotaError) {
-            console.error('Quota error:', quotaError)
-            // On continue même si le quota échoue
-        }
+        // Note: Le trigger on_auth_user_created crée automatiquement l'entrée dans la table users
+        // avec plan='free' et articles_limit=1
 
         return NextResponse.json({
             success: true,

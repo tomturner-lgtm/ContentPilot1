@@ -18,23 +18,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Get user quota to find Stripe customer ID
-    const { data: quota, error: quotaError } = await supabase
-      .from('user_quotas')
+    // Get user data from users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
       .select('stripe_customer_id, stripe_subscription_id')
-      .eq('user_id', user.id)
+      .eq('auth_id', user.id)
       .single()
 
-    if (quotaError || !quota?.stripe_customer_id) {
+    if (userError || !userData?.stripe_customer_id) {
       return NextResponse.json({
         message: 'No Stripe customer found',
-        plan: 'test', // Changed from 'free' - no free plan anymore
+        plan: 'test',
       })
     }
 
     // Get active subscriptions from Stripe
     const subscriptions = await stripe.subscriptions.list({
-      customer: quota.stripe_customer_id,
+      customer: userData.stripe_customer_id,
       status: 'active',
       limit: 1,
     })
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         {
           user_email: user.email || '',
           plan_name: plan,
-          customer_id: quota.stripe_customer_id,
+          customer_id: userData.stripe_customer_id,
           subscription_id: sub.id,
         }
       )
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       {
         user_email: user.email || '',
         plan_name: 'test', // Changed from 'free'
-        customer_id: quota.stripe_customer_id,
+        customer_id: userData.stripe_customer_id,
         subscription_id: null,
       }
     )
