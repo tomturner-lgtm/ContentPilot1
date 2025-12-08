@@ -198,7 +198,7 @@ export async function POST(req: Request) {
     console.log('   - cancel_at_period_end:', subscription.cancel_at_period_end)
 
     // Determine the right status
-    let newStatus = subscription.status
+    let newStatus: string = subscription.status
     if (subscription.cancel_at_period_end && subscription.status === 'active') {
       newStatus = 'canceling' // Custom status for UI
     }
