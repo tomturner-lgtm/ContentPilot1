@@ -211,21 +211,35 @@ export default function PricingPage() {
             const Icon = plan.icon
             const displayPrice = plan.isOneTime ? plan.priceMonthly : (billingPeriod === 'monthly' ? plan.priceMonthly : plan.priceYearly)
 
-            // Logic for button state
-            const isCurrentPlan = currentPlan?.type === plan.id
+            // Logic for button state - MUST compare both type AND billing_period
+            // currentPlan.period comes from usePlan hook (should be 'monthly' or 'yearly')
+            const isExactCurrentPlan = currentPlan?.type === plan.id &&
+              !plan.isOneTime &&
+              currentPlan?.period === billingPeriod
+
+            const isSamePlanDifferentPeriod = currentPlan?.type === plan.id &&
+              !plan.isOneTime &&
+              currentPlan?.period !== billingPeriod
+
             const currentPlanWeight = getPlanWeight(currentPlan?.type || 'free')
             const planWeight = getPlanWeight(plan.id)
             const isUpgrade = planWeight > currentPlanWeight
-            const isDowngradeOrSame = planWeight <= currentPlanWeight && !plan.isOneTime
-
-            // Allow "Test" purchase always (it's one-time)
-            const canPurchase = plan.isOneTime || isUpgrade || !currentPlan || (isCurrentPlan && false) // Can't re-subscribe to exact same plan here easily without portal
+            const isDowngrade = planWeight < currentPlanWeight && !plan.isOneTime
 
             let buttonText = isLoggedIn ? 'Choisir ce plan' : 'Commencer'
-            if (isLoggedIn && !planLoading) {
-              if (isCurrentPlan) buttonText = 'Plan actuel'
-              else if (isUpgrade) buttonText = 'Mettre à niveau'
-              else if (isDowngradeOrSame && !plan.isOneTime) buttonText = 'Inclus'
+            let isButtonDisabled = false
+
+            if (isLoggedIn && !planLoading && currentPlan) {
+              if (isExactCurrentPlan) {
+                buttonText = 'Plan actuel'
+                isButtonDisabled = true
+              } else if (isSamePlanDifferentPeriod) {
+                buttonText = billingPeriod === 'yearly' ? 'Passer à l\'annuel' : 'Passer au mensuel'
+              } else if (isUpgrade) {
+                buttonText = 'Mettre à niveau'
+              } else if (isDowngrade) {
+                buttonText = 'Changer de plan'
+              }
             }
 
             return (
@@ -271,8 +285,8 @@ export default function PricingPage() {
 
                 <button
                   onClick={() => handleCheckout(plan.priceId || null, plan.id)}
-                  disabled={(loading !== null && loading === plan.priceId) || (isCurrentPlan && !plan.isOneTime) || (!isUpgrade && !plan.isOneTime && isLoggedIn && currentPlan?.type !== 'free')}
-                  className={`w-full rounded-xl px-6 py-3.5 text-base font-semibold transition-all hover:scale-[1.02] ${isCurrentPlan
+                  disabled={isButtonDisabled || (loading !== null && loading === plan.priceId)}
+                  className={`w-full rounded-xl px-6 py-3.5 text-base font-semibold transition-all hover:scale-[1.02] ${isExactCurrentPlan
                     ? 'bg-green-100 text-green-700 cursor-default hover:scale-100'
                     : plan.popular
                       ? 'bg-indigo-600 text-white hover:bg-indigo-700'

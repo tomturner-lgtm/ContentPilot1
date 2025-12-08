@@ -50,14 +50,25 @@ export async function POST(req: NextRequest) {
 
     // 2. SI L'UTILISATEUR A DÉJÀ UN ABONNEMENT ACTIF → L'ANNULER
     if (userData.stripe_subscription_id) {
-      console.log(`🔴 Canceling existing subscription: ${userData.stripe_subscription_id}`)
+      console.log(`\n🔴 === ANNULATION ABONNEMENT EXISTANT ===`)
+      console.log(`🔴 Subscription ID: ${userData.stripe_subscription_id}`)
 
       try {
-        await stripe.subscriptions.cancel(userData.stripe_subscription_id)
-        console.log('✅ Old subscription canceled successfully')
+        // D'abord, vérifier si l'abonnement existe et son statut dans Stripe
+        const existingSubscription = await stripe.subscriptions.retrieve(userData.stripe_subscription_id)
+        console.log(`📊 Statut actuel dans Stripe: ${existingSubscription.status}`)
 
-        // Nettoyer la DB immédiatement
-        await supabaseAdmin
+        // Annuler seulement si l'abonnement est actif ou en trial
+        if (existingSubscription.status === 'active' || existingSubscription.status === 'trialing') {
+          console.log(`🔴 Annulation IMMÉDIATE de l'abonnement...`)
+          const canceledSub = await stripe.subscriptions.cancel(userData.stripe_subscription_id)
+          console.log(`✅ Abonnement annulé! Nouveau statut: ${canceledSub.status}`)
+        } else {
+          console.log(`⚠️ Abonnement déjà dans l'état "${existingSubscription.status}", pas besoin d'annuler`)
+        }
+
+        // Nettoyer la DB IMMÉDIATEMENT dans tous les cas
+        const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({
             stripe_subscription_id: null,
@@ -65,10 +76,39 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString()
           })
           .eq('id', userData.id)
-      } catch (cancelError: any) {
-        // Continue même si l'annulation échoue (l'abonnement est peut-être déjà annulé)
-        console.warn('⚠️ Could not cancel subscription (may already be canceled):', cancelError.message)
+
+        if (updateError) {
+          console.error('❌ Erreur lors de la mise à jour DB:', updateError)
+        } else {
+          console.log(`🧹 DB nettoyée: stripe_subscription_id = null`)
+        }
+
+      } catch (stripeError: any) {
+        console.error(`❌ Erreur Stripe:`, stripeError.message)
+
+        // Si l'abonnement n'existe pas dans Stripe (resource_missing), on continue
+        if (stripeError.code === 'resource_missing' || stripeError.message.includes('No such subscription')) {
+          console.log(`⚠️ Abonnement inexistant dans Stripe, on nettoie la DB`)
+          await supabaseAdmin
+            .from('users')
+            .update({
+              stripe_subscription_id: null,
+              stripe_subscription_status: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userData.id)
+        } else {
+          // Pour les autres erreurs, on bloque pour éviter la double facturation
+          console.error(`🚫 BLOCAGE: Impossible d'annuler l'ancien abonnement`)
+          return NextResponse.json(
+            { error: 'Impossible d\'annuler l\'ancien abonnement. Contactez le support.' },
+            { status: 500 }
+          )
+        }
       }
+      console.log(`🔴 === FIN ANNULATION ===\n`)
+    } else {
+      console.log(`✅ Aucun abonnement existant à annuler`)
     }
 
     // 3. CRÉER OU RÉCUPÉRER LE CLIENT STRIPE
