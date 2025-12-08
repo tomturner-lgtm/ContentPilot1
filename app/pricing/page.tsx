@@ -195,7 +195,7 @@ export default function PricingPage() {
               <span className="text-amber-500 text-xl">⚠️</span>
               <div className="text-sm">
                 <p className="font-medium text-amber-800">
-                  Vous avez actuellement le plan {currentPlan.type.toUpperCase()} ({currentPlan.period === 'yearly' ? 'annuel' : 'mensuel'}).
+                  Vous avez actuellement le plan {currentPlan.type.toUpperCase()} ({currentPlan.billingPeriod === 'yearly' ? 'annuel' : 'mensuel'}).
                 </p>
                 <p className="text-amber-700 mt-1">
                   En changeant de plan, votre abonnement actuel sera <strong>annulé immédiatement</strong> et remplacé par le nouveau.
