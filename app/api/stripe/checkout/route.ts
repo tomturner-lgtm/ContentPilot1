@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Check if it's a one-time purchase or subscription
-    const mode = priceId === process.env.STRIPE_PRICE_TEST ? 'payment' : 'subscription'
+    // Check if it's a one-time purchase or subscription (HARDCODED for reliability)
+    const TEST_PRICE_ID = 'price_1SVW9TCQc7L9vhgD6NrtRBK4'
+    const mode = priceId === TEST_PRICE_ID ? 'payment' : 'subscription'
 
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
