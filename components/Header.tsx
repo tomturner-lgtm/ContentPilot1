@@ -69,6 +69,11 @@ export default function Header() {
               <Link href="/" className="text-xl font-bold tracking-tight text-slate-900 hover:text-slate-700 transition-colors">
                 ContentPilot
               </Link>
+              {isLoggedIn && (
+                <Link href="/generate" className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">
+                  ✨ Générer
+                </Link>
+              )}
               <Link href="/articles" className="hidden sm:block text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">
                 Mes Articles
               </Link>

@@ -70,13 +70,21 @@ export default function DashboardPage() {
             }
 
             try {
-                // Appeler la fonction RPC pour récupérer le profil complet
-                const { data, error } = await supabase.rpc('get_user_profile', {
-                    p_user_id: session.user.id
-                })
+                // Récupérer les données depuis la table users directement
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('auth_id', session.user.id)
+                    .single()
 
-                if (error) {
-                    console.error('Error fetching profile:', error)
+                // Compter les articles générés
+                const { count: articlesCount } = await supabase
+                    .from('articles')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', session.user.id)
+
+                if (userError || !userData) {
+                    console.error('Error fetching user:', userError)
                     // Créer un profil par défaut si erreur
                     setProfile({
                         profile: {
@@ -102,7 +110,34 @@ export default function DashboardPage() {
                         can_generate: false,
                     })
                 } else {
-                    setProfile(data)
+                    // Mapper les données utilisateur au format attendu
+                    const planType = userData.plan || 'free'
+                    const articlesLimit = userData.articles_limit || 0
+                    const articlesUsed = userData.articles_used || 0
+
+                    setProfile({
+                        profile: {
+                            first_name: userData.first_name || userData.email?.split('@')[0] || 'Utilisateur',
+                            last_name: userData.last_name || null,
+                            email: userData.email || session.user.email || '',
+                            company_name: userData.company_name || null,
+                            website_url: userData.website_url || null,
+                            onboarding_completed: userData.onboarding_completed || false,
+                        },
+                        subscription: {
+                            plan_type: planType,
+                            billing_period: userData.billing_period || 'monthly',
+                            articles_limit: articlesLimit,
+                            articles_used: articlesUsed,
+                            articles_remaining: Math.max(0, articlesLimit - articlesUsed),
+                            reset_date: userData.quota_reset_date || null,
+                        },
+                        stats: {
+                            total_articles: articlesCount || 0,
+                            one_time_credits: 0,
+                        },
+                        can_generate: articlesLimit > articlesUsed,
+                    })
                 }
             } catch (err) {
                 console.error('Error:', err)
@@ -115,9 +150,12 @@ export default function DashboardPage() {
     }, [supabase, router])
 
     const handleSignOut = async () => {
+        // Nettoyer le localStorage (cache du plan et quota)
+        localStorage.removeItem('contentflow_plan')
+        localStorage.removeItem('contentflow_quota')
         await supabase.auth.signOut()
-        router.push('/')
-        router.refresh()
+        // Force hard reload vers login pour nettoyer tous les états
+        window.location.href = '/login'
     }
 
     if (loading) {

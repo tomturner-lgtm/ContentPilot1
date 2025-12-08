@@ -29,20 +29,23 @@ export function useQuota() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
-        const { data, error } = await supabase.rpc('get_user_quota', {
-          p_user_id: session.user.id
-        })
+        // Lire directement depuis la table users (pas RPC)
+        const { data, error } = await supabase
+          .from('users')
+          .select('articles_used, articles_limit, plan, quota_reset_date')
+          .eq('auth_id', session.user.id)
+          .single()
 
         if (data && !error) {
           // Mettre à jour avec les données serveur
           setQuota({
-            count: data.articles_used,
-            lastReset: data.reset_date
+            count: data.articles_used || 0,
+            lastReset: data.quota_reset_date || ''
           })
           // Sync localStorage pour offline/fallback
           localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            count: data.articles_used,
-            lastReset: data.reset_date
+            count: data.articles_used || 0,
+            lastReset: data.quota_reset_date || ''
           }))
         }
       } else {
