@@ -108,7 +108,7 @@ export default function DashboardPage() {
                     const { count: articlesCount } = await supabase
                         .from('articles')
                         .select('*', { count: 'exact', head: true })
-                        .eq('user_id', session.user.id)
+                        .eq('user_id', userData.id)  // Utiliser l'ID interne, pas l'auth_id
 
                     console.log('📊 Dashboard data:', {
                         userId: userData.id,

@@ -135,11 +135,26 @@ Article :`
       )
     }
 
-    // Sauvegarder l'article dans la base de données
+    // Récupérer l'ID interne de l'utilisateur (users.id, pas auth_id)
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', session.user.id)
+      .single()
+
+    if (userError || !userData) {
+      console.error('Erreur récupération user:', userError)
+      return NextResponse.json(
+        { error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      )
+    }
+
+    // Sauvegarder l'article dans la base de données avec le bon user_id
     const { error: saveError } = await supabase
       .from('articles')
       .insert({
-        user_id: session.user.id,
+        user_id: userData.id,  // Utiliser l'ID interne, pas l'auth_id
         title,
         content: articleContent,
         keyword,
