@@ -389,40 +389,59 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Subscription Management Section */}
-                {userData?.stripe_subscription_id && userData?.stripe_subscription_status !== 'canceling' && (
-                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 mb-6">
-                        <h3 className="font-semibold text-slate-900 mb-4">Gérer mon abonnement</h3>
+                {/* Show if has subscription ID AND status is NOT canceling AND NOT canceled */}
+                {userData?.stripe_subscription_id &&
+                    userData?.stripe_subscription_status !== 'canceling' &&
+                    userData?.stripe_subscription_status !== 'canceled' && (
+                        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 mb-6">
+                            <h3 className="font-semibold text-slate-900 mb-4">Gérer mon abonnement</h3>
 
-                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                            <div>
-                                <p className="font-medium text-slate-900">
-                                    Plan {userData.plan === 'pro' ? 'Pro' : userData.plan === 'max' ? 'Max' : userData.plan}
-                                </p>
-                                <p className="text-sm text-slate-600">
-                                    Facturation {userData.billing_period === 'yearly' ? 'annuelle' : 'mensuelle'}
-                                </p>
+                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                                <div>
+                                    <p className="font-medium text-slate-900">
+                                        Plan {userData.plan === 'pro' ? 'Pro' : userData.plan === 'max' ? 'Max' : userData.plan}
+                                    </p>
+                                    <p className="text-sm text-slate-600">
+                                        Facturation {userData.billing_period === 'yearly' ? 'annuelle' : 'mensuelle'}
+                                    </p>
+                                    <p className="text-xs text-slate-400 mt-1">Status: {userData.stripe_subscription_status || 'actif'}</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+                                >
+                                    Annuler l&apos;abonnement
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setShowCancelModal(true)}
-                                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-                            >
-                                Annuler l&apos;abonnement
-                            </button>
+
+                            {cancelError && (
+                                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-sm text-red-800">{cancelError}</p>
+                                </div>
+                            )}
+
+                            {cancelMessage && (
+                                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                    <p className="text-sm text-green-800">{cancelMessage}</p>
+                                </div>
+                            )}
                         </div>
+                    )}
 
-                        {cancelError && (
-                            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-sm text-red-800">{cancelError}</p>
-                            </div>
-                        )}
-
-                        {cancelMessage && (
-                            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <p className="text-sm text-green-800">{cancelMessage}</p>
-                            </div>
-                        )}
-                    </div>
-                )}
+                {/* Debug Info - Visible only if profile loaded */}
+                <div className="opacity-50 hover:opacity-100 transition-opacity mb-8">
+                    <details className="p-4 bg-slate-100 rounded-xl text-xs font-mono text-slate-600 overflow-auto">
+                        <summary className="cursor-pointer font-bold mb-2">Diagnostic Abonnement (Debug)</summary>
+                        <div className="space-y-1">
+                            <p>User ID: {userData?.id}</p>
+                            <p>Plan: {userData?.plan}</p>
+                            <p>Sub ID: {userData?.stripe_subscription_id ? 'Présent' : 'MANQUANT'}</p>
+                            <p>Sub ID Value: {userData?.stripe_subscription_id}</p>
+                            <p>Status: {userData?.stripe_subscription_status}</p>
+                            <p>Condition Affichage: {userData?.stripe_subscription_id ? 'OK ID' : 'NO ID'} && {userData?.stripe_subscription_status !== 'canceling' ? 'OK Status' : 'NO Status'}</p>
+                        </div>
+                    </details>
+                </div>
 
                 {/* Canceling Subscription Banner */}
                 {userData?.stripe_subscription_status === 'canceling' && (
