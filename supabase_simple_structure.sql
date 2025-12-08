@@ -43,9 +43,9 @@ CREATE TABLE public.users (
     onboarding_completed BOOLEAN DEFAULT false,
     
     -- PLAN & QUOTA (intégré directement)
-    plan TEXT DEFAULT 'free',  -- 'free', 'test', 'pro', 'max'
+    plan TEXT DEFAULT NULL,  -- NULL = pas de plan, 'test', 'pro_monthly', 'pro_yearly', 'max_monthly', 'max_yearly'
     billing_period TEXT DEFAULT 'monthly',
-    articles_limit INTEGER DEFAULT 1,
+    articles_limit INTEGER DEFAULT 0,
     articles_used INTEGER DEFAULT 0,
     quota_reset_date TIMESTAMPTZ DEFAULT (date_trunc('month', NOW()) + INTERVAL '1 month'),
     
@@ -113,8 +113,8 @@ SELECT
     id,
     email,
     COALESCE(raw_user_meta_data->>'full_name', split_part(email, '@', 1)),
-    'free',
-    1,
+    NULL,
+    0,
     created_at
 FROM auth.users
 ON CONFLICT (auth_id) DO NOTHING;
@@ -131,8 +131,8 @@ BEGIN
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-        'free',
-        1
+        NULL,  -- Pas de plan par défaut, l'user doit payer
+        0
     );
     RETURN NEW;
 END;

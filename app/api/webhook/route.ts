@@ -8,18 +8,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ''
 
-// Mapping des price IDs vers les plans et limites
+// Mapping des price IDs vers les plans et limites (HARDCODED pour fiabilité)
 const PLAN_CONFIG: Record<string, { planType: string; articlesLimit: number }> = {
   // Test (one-time) - 1 article
-  [process.env.STRIPE_PRICE_TEST || 'price_test']: { planType: 'test', articlesLimit: 1 },
+  'price_1SVW9TCQc7L9vhgD6NrtRBK4': { planType: 'test', articlesLimit: 1 },
   // Pro mensuel - 30 articles
-  [process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_pro_m']: { planType: 'pro', articlesLimit: 30 },
+  'price_1SVGLwCQc7L9vhgDOp2cw4wn': { planType: 'pro_monthly', articlesLimit: 30 },
   // Pro annuel - 30 articles
-  [process.env.STRIPE_PRICE_PRO_YEARLY || 'price_pro_y']: { planType: 'pro', articlesLimit: 30 },
+  'price_1SVUXJCQc7L9vhgDVShAMmE4': { planType: 'pro_yearly', articlesLimit: 30 },
   // Max mensuel - 200 articles
-  [process.env.STRIPE_PRICE_UNLIMITED_MONTHLY || 'price_max_m']: { planType: 'max', articlesLimit: 200 },
+  'price_1SVGMbCQc7L9vhgDuc2zUVyS': { planType: 'max_monthly', articlesLimit: 200 },
   // Max annuel - 200 articles
-  [process.env.STRIPE_PRICE_UNLIMITED_YEARLY || 'price_max_y']: { planType: 'max', articlesLimit: 200 },
+  'price_1SVUXXCQc7L9vhgDEkMjivDk': { planType: 'max_yearly', articlesLimit: 200 },
 }
 
 export async function POST(request: NextRequest) {
@@ -62,11 +62,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true })
       }
 
-      console.log('Price ID:', priceId)
+      console.log('Price ID received:', priceId)
 
       // Déterminer le plan et les limites
-      const planConfig = PLAN_CONFIG[priceId] || { planType: 'pro', articlesLimit: 30 }
-      console.log('Plan config:', planConfig)
+      const planConfig = PLAN_CONFIG[priceId]
+
+      if (!planConfig) {
+        console.error('❌ Unknown price ID:', priceId, '- Available:', Object.keys(PLAN_CONFIG))
+        return NextResponse.json({ received: true, error: 'Unknown price ID' })
+      }
+
+      console.log('✅ Plan config found:', planConfig)
 
       // Trouver l'utilisateur par email
       const customerEmail = session.customer_email || session.customer_details?.email
@@ -77,17 +83,17 @@ export async function POST(request: NextRequest) {
 
       // Chercher l'utilisateur dans auth.users
       const { data: users, error: userError } = await supabaseAdmin.auth.admin.listUsers()
-      const user = users?.users?.find(u => u.email === customerEmail)
+      const user = users?.users?.find((u: any) => u.email === customerEmail)
 
       if (!user) {
         console.error('User not found for email:', customerEmail)
         return NextResponse.json({ received: true })
       }
 
-      console.log('Found user:', user.id)
+      console.log('✅ Found user:', user.id, user.email)
 
       // Mettre à jour l'utilisateur dans la table users
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError, data: updateData } = await supabaseAdmin
         .from('users')
         .update({
           plan: planConfig.planType,
@@ -100,11 +106,12 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('auth_id', user.id)
+        .select()
 
       if (updateError) {
-        console.error('Error updating user:', updateError)
+        console.error('❌ Error updating user:', updateError)
       } else {
-        console.log('User updated successfully:', user.id)
+        console.log('✅ User plan updated successfully:', { userId: user.id, plan: planConfig.planType, articlesLimit: planConfig.articlesLimit })
       }
 
       // Pour les achats ponctuels (test), créer un one_time_purchase
@@ -146,11 +153,11 @@ export async function POST(request: NextRequest) {
       const subscription = event.data.object as Stripe.Subscription
       console.log('Subscription deleted:', subscription.id)
 
-      // Révoquer le plan (remettre en free)
+      // Révoquer le plan (plan = null, plus d'accès)
       const { error } = await supabaseAdmin
         .from('users')
         .update({
-          plan: 'free',
+          plan: null,
           articles_limit: 0,
           stripe_subscription_status: 'canceled',
           updated_at: new Date().toISOString(),
@@ -158,6 +165,7 @@ export async function POST(request: NextRequest) {
         .eq('stripe_subscription_id', subscription.id)
 
       if (error) console.error('Error revoking plan:', error)
+      else console.log('✅ Plan revoked for subscription:', subscription.id)
     }
 
     return NextResponse.json({ received: true })
