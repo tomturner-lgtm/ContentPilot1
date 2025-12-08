@@ -155,43 +155,66 @@ export async function POST(req: Request) {
     }
   }
 
-  // Handle subscription cancelled
+  // Handle subscription cancelled (definitive)
   if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription
-    console.log('🚫 Subscription deleted:', subscription.id)
+    console.log('🚫 Subscription DELETED (definitive):', subscription.id)
 
-    const { error } = await supabase
+    // Find user by subscription ID
+    const { data: userData } = await supabase
       .from('users')
-      .update({
-        plan: null,
-        articles_limit: 0,
-        stripe_subscription_status: 'canceled',
-        updated_at: new Date().toISOString(),
-      })
+      .select('id')
       .eq('stripe_subscription_id', subscription.id)
+      .single()
 
-    if (error) {
-      console.error('❌ Error canceling subscription:', error)
-    } else {
-      console.log('✅ Subscription canceled in DB')
+    if (userData) {
+      // Clear all subscription data
+      const { error } = await supabase
+        .from('users')
+        .update({
+          plan: null,
+          billing_period: null,
+          articles_limit: 0,
+          articles_used: 0,
+          stripe_subscription_id: null,
+          stripe_subscription_status: 'canceled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userData.id)
+
+      if (error) {
+        console.error('❌ Error canceling subscription:', error)
+      } else {
+        console.log('✅ Subscription fully canceled in DB for user:', userData.id)
+      }
     }
   }
 
-  // Handle subscription updated
+  // Handle subscription updated (status change, cancel_at_period_end, etc.)
   if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as Stripe.Subscription
-    console.log('🔄 Subscription updated:', subscription.id, subscription.status)
+    console.log('🔄 Subscription updated:', subscription.id)
+    console.log('   - status:', subscription.status)
+    console.log('   - cancel_at_period_end:', subscription.cancel_at_period_end)
+
+    // Determine the right status
+    let newStatus = subscription.status
+    if (subscription.cancel_at_period_end && subscription.status === 'active') {
+      newStatus = 'canceling' // Custom status for UI
+    }
 
     const { error } = await supabase
       .from('users')
       .update({
-        stripe_subscription_status: subscription.status,
+        stripe_subscription_status: newStatus,
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_subscription_id', subscription.id)
 
     if (error) {
       console.error('❌ Error updating subscription status:', error)
+    } else {
+      console.log(`✅ Status updated to: ${newStatus}`)
     }
   }
 

@@ -51,6 +51,12 @@ export default function DashboardPage() {
     const [profile, setProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
     const [greeting, setGreeting] = useState('')
+    // Subscription management state
+    const [showCancelModal, setShowCancelModal] = useState(false)
+    const [cancelLoading, setCancelLoading] = useState(false)
+    const [cancelMessage, setCancelMessage] = useState('')
+    const [cancelError, setCancelError] = useState('')
+    const [userData, setUserData] = useState<any>(null)
 
     useEffect(() => {
         // Définir le message de salutation selon l'heure
@@ -147,6 +153,8 @@ export default function DashboardPage() {
                         },
                         can_generate: articlesLimit > articlesUsed,
                     })
+                    // Set raw userData for subscription management
+                    setUserData(userData)
                 }
             } catch (err) {
                 console.error('Error:', err)
@@ -165,6 +173,67 @@ export default function DashboardPage() {
         await supabase.auth.signOut()
         // Force hard reload vers login pour nettoyer tous les états
         window.location.href = '/login'
+    }
+
+    const handleCancelSubscription = async () => {
+        if (!userData?.id) return
+
+        setCancelLoading(true)
+        setCancelError('')
+        setCancelMessage('')
+
+        try {
+            const response = await fetch('/api/subscription/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userData.id }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de l\'annulation')
+            }
+
+            setCancelMessage(data.message)
+            setShowCancelModal(false)
+            router.refresh()
+            // Reload to get fresh data
+            window.location.reload()
+        } catch (err: any) {
+            setCancelError(err.message)
+        } finally {
+            setCancelLoading(false)
+        }
+    }
+
+    const handleReactivateSubscription = async () => {
+        if (!userData?.id) return
+
+        setCancelLoading(true)
+        setCancelError('')
+        setCancelMessage('')
+
+        try {
+            const response = await fetch('/api/subscription/reactivate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userData.id }),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur lors de la réactivation')
+            }
+
+            setCancelMessage(data.message)
+            window.location.reload()
+        } catch (err: any) {
+            setCancelError(err.message)
+        } finally {
+            setCancelLoading(false)
+        }
     }
 
     if (loading) {
@@ -319,6 +388,66 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* Subscription Management Section */}
+                {userData?.stripe_subscription_id && userData?.stripe_subscription_status !== 'canceling' && (
+                    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 mb-6">
+                        <h3 className="font-semibold text-slate-900 mb-4">Gérer mon abonnement</h3>
+
+                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                            <div>
+                                <p className="font-medium text-slate-900">
+                                    Plan {userData.plan === 'pro' ? 'Pro' : userData.plan === 'max' ? 'Max' : userData.plan}
+                                </p>
+                                <p className="text-sm text-slate-600">
+                                    Facturation {userData.billing_period === 'yearly' ? 'annuelle' : 'mensuelle'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+                            >
+                                Annuler l&apos;abonnement
+                            </button>
+                        </div>
+
+                        {cancelError && (
+                            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="text-sm text-red-800">{cancelError}</p>
+                            </div>
+                        )}
+
+                        {cancelMessage && (
+                            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-sm text-green-800">{cancelMessage}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Canceling Subscription Banner */}
+                {userData?.stripe_subscription_status === 'canceling' && (
+                    <div className="rounded-2xl bg-amber-50 border border-amber-200 p-6 mb-6">
+                        <h3 className="font-semibold text-amber-900 mb-2">⚠️ Abonnement en cours d&apos;annulation</h3>
+                        <p className="text-amber-800 mb-4">
+                            Votre abonnement sera annulé à la fin de votre période de facturation actuelle.
+                            Vous conservez l&apos;accès à toutes les fonctionnalités jusqu&apos;à cette date.
+                        </p>
+                        <button
+                            onClick={handleReactivateSubscription}
+                            disabled={cancelLoading}
+                            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 font-medium"
+                        >
+                            {cancelLoading ? 'Réactivation...' : 'Réactiver mon abonnement'}
+                        </button>
+
+                        {cancelMessage && (
+                            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-sm text-green-800">{cancelMessage}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Footer avec infos profil */}
                 <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
                     <div className="flex items-center justify-between">
@@ -338,6 +467,38 @@ export default function DashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Cancel Confirmation Modal */}
+            {showCancelModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-6 max-w-md mx-4 shadow-xl">
+                        <h3 className="text-xl font-bold text-slate-900 mb-4">
+                            Confirmer l&apos;annulation
+                        </h3>
+                        <p className="text-slate-600 mb-6">
+                            Êtes-vous sûr de vouloir annuler votre abonnement ?
+                            Vous conserverez l&apos;accès jusqu&apos;à la fin de votre période de facturation actuelle.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCancelModal(false)}
+                                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium"
+                                disabled={cancelLoading}
+                            >
+                                Non, garder mon abonnement
+                            </button>
+                            <button
+                                onClick={handleCancelSubscription}
+                                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 font-medium"
+                                disabled={cancelLoading}
+                            >
+                                {cancelLoading ? 'Annulation...' : 'Oui, annuler'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     )
 }
