@@ -37,6 +37,12 @@ export function useQuota() {
           .single()
 
         if (data && !error) {
+          console.log('📊 useQuota data:', {
+            articlesUsed: data.articles_used,
+            articlesLimit: data.articles_limit,
+            plan: data.plan,
+            quotaResetDate: data.quota_reset_date
+          })
           // Mettre à jour avec les données serveur
           setQuota({
             count: data.articles_used || 0,
@@ -47,6 +53,8 @@ export function useQuota() {
             count: data.articles_used || 0,
             lastReset: data.quota_reset_date || ''
           }))
+        } else if (error) {
+          console.error('❌ useQuota error:', error)
         }
       } else {
         // Fallback localStorage si non connecté (pour démo/test)

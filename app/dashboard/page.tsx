@@ -77,12 +77,6 @@ export default function DashboardPage() {
                     .eq('auth_id', session.user.id)
                     .single()
 
-                // Compter les articles générés
-                const { count: articlesCount } = await supabase
-                    .from('articles')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', session.user.id)
-
                 if (userError || !userData) {
                     console.error('Error fetching user:', userError)
                     // Créer un profil par défaut si erreur
@@ -110,6 +104,21 @@ export default function DashboardPage() {
                         can_generate: false,
                     })
                 } else {
+                    // Compter les articles générés (utiliser session.user.id car c'est l'auth_id stocké)
+                    const { count: articlesCount } = await supabase
+                        .from('articles')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', session.user.id)
+
+                    console.log('📊 Dashboard data:', {
+                        userId: userData.id,
+                        authId: session.user.id,
+                        plan: userData.plan,
+                        articlesUsed: userData.articles_used,
+                        articlesLimit: userData.articles_limit,
+                        totalArticles: articlesCount
+                    })
+
                     // Mapper les données utilisateur au format attendu
                     const planType = userData.plan || 'free'
                     const articlesLimit = userData.articles_limit || 0
