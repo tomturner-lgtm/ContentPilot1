@@ -165,7 +165,7 @@ export default function PricingPage() {
         {/* ... (keep existing header code) ... */}
 
         {/* Billing Toggle */}
-        <div className="flex justify-center mb-10">
+        <div className="flex justify-center mb-6">
           <div className="bg-white p-1 rounded-xl border border-gray-200 inline-flex">
             <button
               onClick={() => setBillingPeriod('monthly')}
@@ -187,6 +187,23 @@ export default function PricingPage() {
             </button>
           </div>
         </div>
+
+        {/* Warning Banner - Shown when user has active subscription */}
+        {isLoggedIn && currentPlan && currentPlan.type !== 'free' && !planLoading && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-amber-500 text-xl">⚠️</span>
+              <div className="text-sm">
+                <p className="font-medium text-amber-800">
+                  Vous avez actuellement le plan {currentPlan.type.toUpperCase()} ({currentPlan.period === 'yearly' ? 'annuel' : 'mensuel'}).
+                </p>
+                <p className="text-amber-700 mt-1">
+                  En changeant de plan, votre abonnement actuel sera <strong>annulé immédiatement</strong> et remplacé par le nouveau.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Plans Cards */}
         <div className="grid gap-6 lg:grid-cols-3 mb-16">
