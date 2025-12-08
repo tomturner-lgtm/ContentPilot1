@@ -40,9 +40,51 @@ export async function POST(req: Request) {
         console.log('  - Plan:', user.plan)
         console.log('  - Subscription ID:', user.stripe_subscription_id)
 
-        // 2. Vérifier qu'il a bien un abonnement
-        if (!user.stripe_subscription_id) {
-            console.log('⚠️ Aucun abonnement à annuler')
+        // 2. Vérifier/Récupérer l'ID d'abonnement
+        let stripeSubscriptionId = user.stripe_subscription_id
+
+        // Si ID manquant mais Customer ID présent, chercher chez Stripe
+        if (!stripeSubscriptionId && user.stripe_customer_id) {
+            console.log('⚠️ ID abonnement manquant, recherche via Customer ID...')
+            const subscriptions = await stripe.subscriptions.list({
+                customer: user.stripe_customer_id,
+                status: 'active',
+                limit: 1
+            })
+
+            if (subscriptions.data.length > 0) {
+                stripeSubscriptionId = subscriptions.data[0].id
+                console.log('✅ Abonnement retrouvé:', stripeSubscriptionId)
+
+                // Mettre à jour la DB pour la prochaine fois
+                await supabase.from('users').update({
+                    stripe_subscription_id: stripeSubscriptionId
+                }).eq('id', userId)
+            }
+        }
+
+        if (!stripeSubscriptionId) {
+            console.log('⚠️ Aucun abonnement trouvé chez Stripe')
+
+            // Cas "Fantôme": Plan payant en DB mais pas d'abo Stripe -> On nettoie la DB
+            if (user.plan && user.plan !== 'free') {
+                console.log('🧹 Nettoyage des données d\'abonnement incohérentes')
+                await supabase.from('users').update({
+                    plan: 'free',
+                    stripe_subscription_id: null,
+                    stripe_subscription_status: 'canceled',
+                    billing_period: null,
+                    articles_limit: 0,
+                    quota_reset_date: null
+                }).eq('id', userId)
+
+                return NextResponse.json({
+                    success: true,
+                    message: "Votre statut a été mis à jour (aucun abonnement actif détecté chez Stripe).",
+                    accessUntil: new Date().toISOString(),
+                })
+            }
+
             return NextResponse.json(
                 { error: 'Aucun abonnement actif à annuler' },
                 { status: 400 }
@@ -50,7 +92,7 @@ export async function POST(req: Request) {
         }
 
         // 3. Récupérer l'abonnement Stripe
-        const subscription = await stripe.subscriptions.retrieve(user.stripe_subscription_id)
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
 
         console.log('📋 Abonnement Stripe:')
         console.log('  - Status:', subscription.status)
@@ -59,7 +101,7 @@ export async function POST(req: Request) {
         // 4. Annuler l'abonnement À LA FIN DE LA PÉRIODE
         // L'utilisateur garde l'accès jusqu'à la date de fin
         const canceledSubscription = await stripe.subscriptions.update(
-            user.stripe_subscription_id,
+            stripeSubscriptionId,
             {
                 cancel_at_period_end: true,
             }

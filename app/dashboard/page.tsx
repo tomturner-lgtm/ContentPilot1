@@ -389,8 +389,9 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Subscription Management Section */}
-                {/* Show if has subscription ID AND status is NOT canceling AND NOT canceled */}
-                {userData?.stripe_subscription_id &&
+                {/* Show if plan is NOT free AND status is NOT canceling AND NOT canceled */}
+                {/* We rely on plan status, assuming if they have a plan, they should be able to manage it */}
+                {userData?.plan && userData?.plan !== 'free' &&
                     userData?.stripe_subscription_status !== 'canceling' &&
                     userData?.stripe_subscription_status !== 'canceled' && (
                         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6 mb-6">
