@@ -34,7 +34,37 @@ export default function PricingPage() {
   const [prices, setPrices] = useState<StripePrices | null>(null)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  // ... useEffects
+  // Check if user is logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setIsLoggedIn(!!session)
+    }
+    checkSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  // Fetch Stripe prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        const response = await fetch('/api/stripe/prices')
+        if (response.ok) {
+          const data = await response.json()
+          setPrices(data)
+        }
+      } catch (error) {
+        console.error('Error fetching prices:', error)
+      }
+    }
+    fetchPrices()
+  }, [])
 
   // Helper to determine plan order
   const getPlanWeight = (planType: string) => {

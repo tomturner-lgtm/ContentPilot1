@@ -58,7 +58,8 @@ function LoginContent() {
         if (signInError) {
           setSuccess('Compte créé ! Vous pouvez maintenant vous connecter.')
         } else {
-          router.push('/dashboard')
+          const redirectTo = searchParams.get('redirect') || '/dashboard'
+          router.push(redirectTo)
           router.refresh()
         }
       } else {
