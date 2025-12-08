@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { usePlan, PLAN_LIMITS } from './usePlan'
 
@@ -12,6 +13,7 @@ interface QuotaData {
 export function useQuota() {
   const plan = usePlan()
   const supabase = createClientComponentClient()
+  const pathname = usePathname() // Track route changes
   const [quota, setQuota] = useState<QuotaData>({ count: 0, lastReset: '' })
   const [loading, setLoading] = useState(true)
 
@@ -70,10 +72,10 @@ export function useQuota() {
     }
   }, [supabase])
 
-  // Charger au montage et quand le user change
+  // Charger au montage et quand la route change (pour rafraîchir le badge Header)
   useEffect(() => {
     fetchQuota()
-  }, [fetchQuota])
+  }, [fetchQuota, pathname])
 
   // Incrémenter le quota (optimiste + serveur)
   const incrementQuota = useCallback(async () => {
