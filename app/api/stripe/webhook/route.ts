@@ -220,5 +220,103 @@ export async function POST(req: Request) {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ÉVÉNEMENT CRITIQUE : invoice.payment_succeeded
+  // Déclenché à CHAQUE renouvellement mensuel/annuel
+  // C'est ICI qu'on réinitialise articles_used à 0
+  // ═══════════════════════════════════════════════════════════════
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object as Stripe.Invoice
+    const subscriptionId = invoice.subscription as string
+
+    console.log('💳 === PAIEMENT RÉUSSI ===')
+    console.log('💳 Invoice ID:', invoice.id)
+    console.log('💳 Subscription ID:', subscriptionId)
+    console.log('💳 Billing reason:', invoice.billing_reason)
+
+    // Ne traiter que les renouvellements (pas le premier paiement qui est géré par checkout.session.completed)
+    if (subscriptionId && invoice.billing_reason === 'subscription_cycle') {
+      console.log('🔄 Renouvellement détecté - Réinitialisation du quota...')
+
+      // Trouver l'user par subscription_id
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, plan, articles_used, articles_limit')
+        .eq('stripe_subscription_id', subscriptionId)
+        .single()
+
+      if (userError || !userData) {
+        console.error('❌ User not found for subscription:', subscriptionId, userError)
+        return NextResponse.json({ received: true })
+      }
+
+      console.log('👤 User trouvé:', {
+        id: userData.id,
+        email: userData.email,
+        plan: userData.plan,
+        articles_used_before: userData.articles_used,
+        articles_limit: userData.articles_limit
+      })
+
+      // Calculer la nouvelle date de reset (+30 jours)
+      const newResetDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+      // RÉINITIALISER LE QUOTA
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          articles_used: 0, // 🔥 RESET à zéro
+          quota_reset_date: newResetDate,
+          stripe_subscription_status: 'active',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userData.id)
+
+      if (updateError) {
+        console.error('❌ Erreur lors du reset du quota:', updateError)
+      } else {
+        console.log('✅ QUOTA RÉINITIALISÉ avec succès!')
+        console.log('   - articles_used: 0 (était:', userData.articles_used, ')')
+        console.log('   - quota_reset_date:', newResetDate)
+      }
+    } else if (invoice.billing_reason === 'subscription_create') {
+      console.log('ℹ️ Premier paiement (géré par checkout.session.completed), ignoré ici')
+    } else {
+      console.log('ℹ️ Autre type de paiement, billing_reason:', invoice.billing_reason)
+    }
+    console.log('💳 === FIN PAIEMENT ===')
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ÉVÉNEMENT : invoice.payment_failed
+  // Déclenché quand un paiement échoue (carte expirée, fonds insuffisants)
+  // ═══════════════════════════════════════════════════════════════
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice
+    const subscriptionId = invoice.subscription as string
+
+    console.log('❌ === PAIEMENT ÉCHOUÉ ===')
+    console.log('❌ Invoice ID:', invoice.id)
+    console.log('❌ Subscription ID:', subscriptionId)
+
+    if (subscriptionId) {
+      // Mettre à jour le statut pour informer l'utilisateur
+      const { error } = await supabase
+        .from('users')
+        .update({
+          stripe_subscription_status: 'past_due',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('stripe_subscription_id', subscriptionId)
+
+      if (error) {
+        console.error('❌ Erreur lors de la mise à jour du statut:', error)
+      } else {
+        console.log('⚠️ Statut mis à jour: past_due')
+      }
+    }
+    console.log('❌ === FIN PAIEMENT ÉCHOUÉ ===')
+  }
+
   return NextResponse.json({ received: true })
 }
