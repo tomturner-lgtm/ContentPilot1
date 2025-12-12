@@ -16,20 +16,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // Variables Supabase pour les requêtes RPC
+    // Variables Supabase pour les requêtes admin
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     const supabaseAdmin = createClient(supabaseUrl, supabaseKey)
 
-    // Get user quota using the RPC function
-    const { data: quotaData, error: quotaError } = await supabaseAdmin.rpc(
-      'get_user_quota',
-      { p_user_id: user.id }
-    )
+    // Récupérer directement depuis la table users (plus fiable que RPC)
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, plan, billing_period, articles_limit, articles_used, quota_reset_date, stripe_subscription_status')
+      .eq('auth_id', user.id)
+      .single()
 
-    if (quotaError) {
-      console.error('Error getting quota:', quotaError)
-      // Si pas de quota trouvé, retourner des valeurs par défaut (plan gratuit)
+    if (userError || !userData) {
+      console.error('Error getting user:', userError)
+      // Si pas d'user trouvé, retourner des valeurs par défaut (plan gratuit)
       return NextResponse.json({
         canGenerate: true,
         plan: 'free',
@@ -43,38 +44,46 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const quota = quotaData as {
-      plan_type: string
-      articles_limit: number
-      articles_used: number
-      articles_remaining: number
-      reset_date: string
-      one_time_purchases_available: number
-      has_unlimited: boolean
-    }
+    // Calculer les valeurs
+    const articlesLimit = userData.articles_limit || 0
+    const articlesUsed = userData.articles_used || 0
+    const articlesRemaining = Math.max(0, articlesLimit - articlesUsed)
 
-    const canGenerate =
-      quota.has_unlimited ||
-      quota.articles_remaining > 0 ||
-      quota.one_time_purchases_available > 0
-
-    // Get one-time purchases
-    const { data: oneTimePurchases } = await supabaseAdmin
+    // Get one-time purchases disponibles
+    const { data: oneTimePurchases, error: otpError } = await supabaseAdmin
       .from('one_time_purchases')
       .select('id, used, created_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userData.id)
       .eq('used', false)
+
+    const oneTimePurchasesAvailable = oneTimePurchases?.length || 0
+
+    // Déterminer si l'user peut générer
+    const canGenerate =
+      articlesRemaining > 0 ||
+      oneTimePurchasesAvailable > 0
+
+    console.log('📊 Check quota result:', {
+      userId: userData.id,
+      plan: userData.plan,
+      articlesUsed,
+      articlesLimit,
+      articlesRemaining,
+      oneTimePurchasesAvailable,
+      canGenerate
+    })
 
     return NextResponse.json({
       canGenerate,
-      plan: quota.plan_type,
-      articlesUsed: quota.articles_used,
-      articlesLimit: quota.articles_limit,
-      articlesRemaining: quota.articles_remaining,
-      resetDate: quota.reset_date,
-      oneTimePurchasesAvailable: quota.one_time_purchases_available,
-      hasUnlimited: quota.has_unlimited,
+      plan: userData.plan || 'free',
+      articlesUsed,
+      articlesLimit,
+      articlesRemaining,
+      resetDate: userData.quota_reset_date || new Date().toISOString(),
+      oneTimePurchasesAvailable,
+      hasUnlimited: false, // Plus de plan "illimité"
       oneTimePurchases: oneTimePurchases || [],
+      subscriptionStatus: userData.stripe_subscription_status,
     })
   } catch (err: any) {
     console.error('Error checking quota:', err)
