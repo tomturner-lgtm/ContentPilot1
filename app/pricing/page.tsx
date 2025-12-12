@@ -212,14 +212,14 @@ export default function PricingPage() {
             const displayPrice = plan.isOneTime ? plan.priceMonthly : (billingPeriod === 'monthly' ? plan.priceMonthly : plan.priceYearly)
 
             // Logic for button state - MUST compare both type AND billing_period
-            // currentPlan.period comes from usePlan hook (should be 'monthly' or 'yearly')
+            // currentPlan.billingPeriod comes from usePlan hook (should be 'monthly' or 'yearly')
             const isExactCurrentPlan = currentPlan?.type === plan.id &&
               !plan.isOneTime &&
-              currentPlan?.period === billingPeriod
+              currentPlan?.billingPeriod === billingPeriod
 
             const isSamePlanDifferentPeriod = currentPlan?.type === plan.id &&
               !plan.isOneTime &&
-              currentPlan?.period !== billingPeriod
+              currentPlan?.billingPeriod !== billingPeriod
 
             const currentPlanWeight = getPlanWeight(currentPlan?.type || 'free')
             const planWeight = getPlanWeight(plan.id)
