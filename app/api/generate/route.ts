@@ -5,6 +5,8 @@ import OpenAI from 'openai'
 import { getTemplate, TemplateType, TEMPLATES } from '@/lib/templates'
 import { LanguageCode, LANGUAGES, getLanguage } from '@/lib/languages'
 
+export const dynamic = 'force-dynamic'
+
 // Lazy instantiation pour éviter les erreurs de build
 const getOpenAI = () => {
   return new OpenAI({

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+
+export const dynamic = 'force-dynamic'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: '2023-10-16',
@@ -14,8 +18,37 @@ const getSupabaseAdmin = () => {
 
 export async function POST(req: Request) {
     try {
+        // 🔒 SÉCURITÉ : Vérifier l'authentification
+        const cookieStore = cookies()
+        const supabaseAuth = createRouteHandlerClient({ cookies: () => cookieStore })
+        const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
+
+        if (!authUser) {
+            console.error('❌ Tentative de réactivation sans authentification')
+            return NextResponse.json(
+                { error: 'Non authentifié' },
+                { status: 401 }
+            )
+        }
+
         const { userId } = await req.json()
         const supabase = getSupabaseAdmin()
+
+        // 🔒 SÉCURITÉ : Vérifier que l'utilisateur ne peut réactiver que SON propre abonnement
+        const { data: userCheck } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', userId)
+            .eq('auth_id', authUser.id)
+            .single()
+
+        if (!userCheck) {
+            console.error('❌ Tentative de réactivation d\'un abonnement d\'un autre utilisateur')
+            return NextResponse.json(
+                { error: 'Non autorisé' },
+                { status: 403 }
+            )
+        }
 
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
         console.log('🟢 DEMANDE DE RÉACTIVATION D\'ABONNEMENT')
