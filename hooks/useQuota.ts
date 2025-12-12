@@ -31,6 +31,13 @@ export function useQuota() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
+        // Vérifier si l'utilisateur a changé (pour éviter pollution du cache)
+        const storedUserId = localStorage.getItem('contentflow_user_id')
+        if (storedUserId && storedUserId !== session.user.id) {
+          console.log('🔄 useQuota: Changement d\'utilisateur, nettoyage cache')
+          localStorage.removeItem(STORAGE_KEY)
+        }
+
         // Lire directement depuis la table users (pas RPC)
         const { data, error } = await supabase
           .from('users')
@@ -39,7 +46,7 @@ export function useQuota() {
           .single()
 
         if (data && !error) {
-          console.log('📊 useQuota data:', {
+          console.log('📊 useQuota data pour', session.user.email, ':', {
             articlesUsed: data.articles_used,
             articlesLimit: data.articles_limit,
             plan: data.plan,
@@ -57,13 +64,14 @@ export function useQuota() {
           }))
         } else if (error) {
           console.error('❌ useQuota error:', error)
+          // En cas d'erreur, reset aux valeurs par défaut
+          setQuota({ count: 0, lastReset: '' })
         }
       } else {
-        // Fallback localStorage si non connecté (pour démo/test)
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-          setQuota(JSON.parse(stored))
-        }
+        // Pas de session -> Nettoyer le cache et utiliser valeurs par défaut
+        console.log('⚠️ useQuota: Pas de session, reset du quota')
+        localStorage.removeItem(STORAGE_KEY)
+        setQuota({ count: 0, lastReset: '' })
       }
     } catch (error) {
       console.error('Erreur chargement quota:', error)

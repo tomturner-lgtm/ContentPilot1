@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { ArrowLeft, Save, User, Building, Globe, Mail } from 'lucide-react'
+import { clearUserCache } from '@/lib/auth-utils'
 
 interface ProfileData {
   first_name: string
@@ -101,9 +102,9 @@ export default function ProfilePage() {
   }
 
   const handleSignOut = async () => {
+    clearUserCache()
     await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    window.location.href = '/login'
   }
 
   if (loading) {

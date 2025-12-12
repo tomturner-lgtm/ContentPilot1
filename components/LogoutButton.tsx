@@ -1,8 +1,13 @@
 'use client'
 
+import { clearUserCache } from '@/lib/auth-utils'
+
 export default function LogoutButton() {
   const handleLogout = async () => {
     try {
+      // Nettoyer le cache utilisateur avant déconnexion
+      clearUserCache()
+      
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
       })
@@ -11,6 +16,8 @@ export default function LogoutButton() {
       }
     } catch (error) {
       console.error('Error logging out:', error)
+      // Même en cas d'erreur, nettoyer et rediriger
+      clearUserCache()
       window.location.href = '/login'
     }
   }

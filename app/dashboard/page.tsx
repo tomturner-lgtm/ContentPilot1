@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Sparkles, FileText, CreditCard, Settings, TrendingUp, Clock, ChevronRight } from 'lucide-react'
 import { PLAN_LIMITS, PlanType } from '@/hooks/usePlan'
+import { clearUserCache } from '@/lib/auth-utils'
 
 interface UserProfile {
     profile: {
@@ -167,9 +168,8 @@ export default function DashboardPage() {
     }, [supabase, router])
 
     const handleSignOut = async () => {
-        // Nettoyer le localStorage (cache du plan et quota)
-        localStorage.removeItem('contentflow_plan')
-        localStorage.removeItem('contentflow_quota')
+        // Nettoyer TOUT le cache utilisateur
+        clearUserCache()
         await supabase.auth.signOut()
         // Force hard reload vers login pour nettoyer tous les états
         window.location.href = '/login'

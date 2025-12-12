@@ -36,16 +36,26 @@ export function usePlan() {
   // Charger le plan depuis la base de données (source de vérité)
   const loadPlan = useCallback(async () => {
     try {
-      // 1. Charger depuis le localStorage pour un affichage immédiat (optimiste)
-      const stored = localStorage.getItem(PLAN_STORAGE_KEY)
-      if (stored) {
-        setPlan(JSON.parse(stored))
-      }
-
-      // 2. Vérifier la session et charger depuis Supabase
+      // 1. Vérifier la session AVANT de charger le cache
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
+        // 2. Vérifier si le cache correspond à l'utilisateur actuel
+        const stored = localStorage.getItem(PLAN_STORAGE_KEY)
+        const storedUserId = localStorage.getItem('contentflow_user_id')
+        
+        // Si l'utilisateur a changé, nettoyer le cache
+        if (storedUserId && storedUserId !== session.user.id) {
+          console.log('🔄 Changement d\'utilisateur détecté, nettoyage du cache')
+          localStorage.removeItem(PLAN_STORAGE_KEY)
+          localStorage.removeItem('contentflow_quota')
+          localStorage.removeItem('contentflow_user_id')
+        }
+        
+        // Sauvegarder l'ID de l'utilisateur actuel
+        localStorage.setItem('contentflow_user_id', session.user.id)
+
+        // 3. Charger depuis Supabase (source de vérité)
         const { data, error } = await supabase
           .from('users')
           .select('plan, billing_period')
@@ -54,7 +64,6 @@ export function usePlan() {
 
         if (data && !error) {
           const dbPlanType = data.plan as PlanType
-          // Mettre à jour si différent
           const newPlan: PlanData = {
             type: dbPlanType || 'free',
             billingPeriod: data.billing_period || 'monthly',
@@ -63,16 +72,29 @@ export function usePlan() {
 
           setPlan(newPlan)
           localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(newPlan))
+          console.log('✅ Plan chargé pour', session.user.email, ':', newPlan.type)
+        } else {
+          // Pas de données en DB -> plan par défaut
+          const defaultPlan: PlanData = {
+            type: 'free',
+            billingPeriod: 'monthly',
+            startDate: new Date().toISOString().split('T')[0],
+          }
+          setPlan(defaultPlan)
+          localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(defaultPlan))
         }
-      } else if (!stored) {
-        // Pas de session et rien en cache -> Free/Test par défaut
+      } else {
+        // Pas de session -> Nettoyer le cache et utiliser valeurs par défaut
+        console.log('⚠️ Pas de session, nettoyage du cache plan')
+        localStorage.removeItem(PLAN_STORAGE_KEY)
+        localStorage.removeItem('contentflow_user_id')
+        
         const defaultPlan: PlanData = {
           type: 'free',
           billingPeriod: 'monthly',
           startDate: new Date().toISOString().split('T')[0],
         }
         setPlan(defaultPlan)
-        // Ne pas persister le "default" en local si l'utilisateur n'est pas connecté pour ne pas polluer
       }
     } catch (error) {
       console.error('Erreur lors du chargement du plan:', error)
