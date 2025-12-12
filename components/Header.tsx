@@ -86,42 +86,48 @@ export default function Header() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Plan actuel */}
-              <div className="hidden sm:block">
-                <span className={`text-xs font-semibold tracking-wide ${plan.currentPlanType === 'pro' ? 'bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full' : 'text-slate-500'}`}>
-                  {plan.currentPlanType === 'pro' ? 'PRO' : `Plan ${PLAN_NAMES[plan.currentPlanType]}`}
-                </span>
-              </div>
-
-              {/* Badge de quota */}
-              <div className="hidden sm:flex flex-col items-end">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-slate-700">
-                    {plan.isUnlimited() ? (
-                      <>{quota.count} articles générés</>
-                    ) : (
-                      <>{quota.count}/{quota.limit} articles utilisés</>
-                    )}
+              {/* Plan actuel - SEULEMENT si connecté */}
+              {isLoggedIn && (
+                <div className="hidden sm:block">
+                  <span className={`text-xs font-semibold tracking-wide ${plan.currentPlanType === 'pro' ? 'bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full' : plan.currentPlanType === 'max' ? 'bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full' : 'text-slate-500'}`}>
+                    {plan.currentPlanType === 'pro' ? 'PRO' : plan.currentPlanType === 'max' ? 'MAX' : `Plan ${PLAN_NAMES[plan.currentPlanType]}`}
                   </span>
                 </div>
-                {!plan.isUnlimited() && (
-                  <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
-                    <div className="h-full bg-indigo-600 transition-all duration-300 rounded-full" style={{ width: `${quota.usagePercentage}%` }} />
+              )}
+
+              {/* Badge de quota - SEULEMENT si connecté */}
+              {isLoggedIn && (
+                <div className="hidden sm:flex flex-col items-end">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      {plan.isUnlimited() ? (
+                        <>{quota.count} articles générés</>
+                      ) : (
+                        <>{quota.count}/{quota.limit} articles utilisés</>
+                      )}
+                    </span>
                   </div>
-                )}
-              </div>
-
-              {/* Version mobile */}
-              <div className="sm:hidden flex items-center gap-2">
-                <span className={`text-xs ${plan.currentPlanType === 'pro' ? 'bg-primary-100 text-primary-700 px-2 py-1 rounded font-semibold' : 'text-gray-500'}`}>
-                  {plan.currentPlanType === 'pro' ? 'PRO' : PLAN_NAMES[plan.currentPlanType]}
-                </span>
-                <div className="px-3 py-1.5 bg-primary-50 rounded-lg">
-                  <span className="text-xs font-medium text-primary-700">
-                    {plan.isUnlimited() ? quota.count : `${quota.count}/${quota.limit}`}
-                  </span>
+                  {!plan.isUnlimited() && (
+                    <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1.5">
+                      <div className="h-full bg-indigo-600 transition-all duration-300 rounded-full" style={{ width: `${quota.usagePercentage}%` }} />
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Version mobile - SEULEMENT si connecté */}
+              {isLoggedIn && (
+                <div className="sm:hidden flex items-center gap-2">
+                  <span className={`text-xs ${plan.currentPlanType === 'pro' ? 'bg-primary-100 text-primary-700 px-2 py-1 rounded font-semibold' : 'text-gray-500'}`}>
+                    {plan.currentPlanType === 'pro' ? 'PRO' : PLAN_NAMES[plan.currentPlanType]}
+                  </span>
+                  <div className="px-3 py-1.5 bg-primary-50 rounded-lg">
+                    <span className="text-xs font-medium text-primary-700">
+                      {plan.isUnlimited() ? quota.count : `${quota.count}/${quota.limit}`}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Bouton Connexion / Profil */}
               {isLoggedIn ? (
